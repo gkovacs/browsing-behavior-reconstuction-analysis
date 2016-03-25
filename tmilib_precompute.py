@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: be5e5c380df0c2497056ce8ee248db8f
+# md5: e666fa10cde2987fe972628d79689bb3
 # coding: utf-8
 
 from tmilib import *
@@ -19,7 +19,13 @@ get_domains_list()
 '''
 
 
-compute_tab_focus_times_for_all_users_randomized()
+if random.random() > 0.5:
+  print 'history_pages_for_all_users_randomized'
+  compute_history_pages_for_all_users_randomized()
+else:
+  print 'history_visits_for_all_users_randomized'
+  compute_history_visits_for_all_users_randomized()
+#compute_tab_focus_times_for_all_users_randomized()
 
 
 #print 'compute_tab_focus_times_for_all_users'

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: b9a5790116945e1b338641361768d0b5
+# md5: a9c1a76d1a1d1191ddc138118fdf948c
 # coding: utf-8
 
 import urlparse
@@ -44,6 +44,14 @@ def list_histfiles():
 @memoized
 def list_users():
   return [filename_to_username(x) for x in list_logfiles()]
+
+@memoized
+def list_users_with_hist():
+  return [filename_to_username(x) for x in list_histfiles()]
+
+@memoized
+def list_users_with_mlog():
+  return [filename_to_username(x) for x in list_mlogfiles()]
 
 
 @memoized
@@ -99,6 +107,12 @@ def filename_to_username(filename):
   filename = filename[:-5] # removes the .json
   return filename.split('_')[-1] # returns part after the last _ which is the username
 
+
+def decompress_data_lzstring_base64(data):
+  data_type = type(data)
+  if data_type == unicode or data_type == str:
+    return json.loads(decompress_lzstring.decompressFromBase64(data))
+  return data
 
 def iterate_data_jsondata(data):
   for x in data:

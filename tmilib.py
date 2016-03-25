@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 5e66effacf4bcdedaddf76c7eacf5cb1
+# md5: a45eb5b849d7d0b2c584b59e90ac2e01
 # coding: utf-8
 
 from tmilib_base import *
@@ -18,6 +18,8 @@ def get_compute_function_from_name(name):
     'domains_list': compute_domains_list,
     # multiuser directories
     'tab_focus_times_for_user': compute_tab_focus_times_for_user,
+    'history_pages_for_user': compute_history_pages_for_user,
+    'history_visits_for_user': compute_history_visits_for_user,
   }
   if name in mapping:
     return mapping[name]
@@ -185,6 +187,64 @@ def compute_tab_focus_times_for_all_users_randomized():
   for user in shuffled(list_users()):
     print user
     compute_function_for_key(user, 'tab_focus_times_for_user')
+
+#compute_tab_focus_times_for_all_users()
+
+
+def compute_history_pages_for_user(user):
+  filename = get_histfile_for_user(user)
+  all_lines = json.load(open(filename))
+  max_hid = 0
+  for line in all_lines:
+    hid = line['hid']
+    max_hid = max(hid, max_hid)
+  for line in all_lines:
+    hid = line['hid']
+    if hid < max_hid:
+      continue
+    evt = line['evt']
+    if evt == 'history_pages':
+      data = decompress_data_lzstring_base64(line['data'])
+      return data
+
+def compute_history_visits_for_user(user):
+  filename = get_histfile_for_user(user)
+  all_lines = json.load(open(filename))
+  max_hid = 0
+  for line in all_lines:
+    hid = line['hid']
+    max_hid = max(hid, max_hid)
+  output = {}
+  for line in all_lines:
+    hid = line['hid']
+    if hid < max_hid:
+      continue
+    evt = line['evt']
+    if evt == 'history_visits':
+      data = decompress_data_lzstring_base64(line['data'])
+      for k,v in data.items():
+        output[k] = v
+  return output
+
+def compute_history_pages_for_all_users():
+  for user in list_users_with_hist():
+    print user
+    compute_function_for_key(user, 'history_pages_for_user')
+
+def compute_history_pages_for_all_users_randomized():
+  for user in shuffled(list_users_with_hist()):
+    print user
+    compute_function_for_key(user, 'history_pages_for_user')
+
+def compute_history_visits_for_all_users():
+  for user in list_users_with_hist():
+    print user
+    compute_function_for_key(user, 'history_visits_for_user')
+
+def compute_history_visits_for_all_users_randomized():
+  for user in shuffled(list_users_with_hist()):
+    print user
+    compute_function_for_key(user, 'history_visits_for_user')
 
 #compute_tab_focus_times_for_all_users()
 
