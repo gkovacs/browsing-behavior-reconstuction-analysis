@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 3e7f5be5401985527206006aca5815a4
+# md5: b9a5790116945e1b338641361768d0b5
 # coding: utf-8
 
 import urlparse
@@ -21,6 +21,7 @@ from collections import Counter
 import numpy
 import time
 import datetime
+import random
 
 
 @memoized
@@ -40,6 +41,10 @@ def list_mlogfiles():
 def list_histfiles():
   return glob(get_basedir() + '/hist_*.json')
 
+@memoized
+def list_users():
+  return [filename_to_username(x) for x in list_logfiles()]
+
 
 @memoized
 def get_sdir():
@@ -50,6 +55,13 @@ def ensure_sdir_exists():
   if path.exists(sdir):
     return
   os.makedirs(sdir)
+
+def ensure_sdir_subdir_exists(subdir):
+  ensure_sdir_exists()
+  sdir = get_sdir()
+  if path.exists(sdir + '/' + subdir):
+    return
+  os.makedirs(sdir + '/' + subdir)
 
 def sdir_path(filename):
   return get_sdir() + '/' + filename
@@ -68,24 +80,76 @@ def sdir_dumpjson(filename, data):
   return json.dump(data, sdir_open(filename, 'w'))
 
 
+def dumpdir_path(filename):
+  return get_basedir() + '/' + filename
+
+def get_logfile_for_user(user):
+  return dumpdir_path('logs_' + user + '.json')
+
+def get_mlogfile_for_user(user):
+  return dumpdir_path('mlogs_' + user + '.json')
+
+def get_histfile_for_user(user):
+  return dumpdir_path('hist_' + user + '.json')
+
+
+def filename_to_username(filename):
+  if not filename.endswith('.json'):
+    raise Exception('expected filename to end with .json ' + filename)
+  filename = filename[:-5] # removes the .json
+  return filename.split('_')[-1] # returns part after the last _ which is the username
+
+
+def iterate_data_jsondata(data):
+  for x in data:
+    if 'windows' in x:
+      data_type = type(x['windows'])
+      if data_type == unicode or data_type == str:
+        x['windows'] = json.loads(decompress_lzstring.decompressFromBase64(x['windows']))
+    if 'data' in x:
+      data_type = type(x['data'])
+      if data_type == unicode or data_type == str:
+        x['data'] = json.loads(decompress_lzstring.decompressFromBase64(x['data']))
+    yield x
+
 def iterate_data(filename):
   for x in json.load(open(filename)):
     if 'windows' in x:
-      x['windows'] = json.loads(decompress_lzstring.decompressFromBase64(x['windows']))
+      data_type = type(x['windows'])
+      if data_type == unicode or data_type == str:
+        x['windows'] = json.loads(decompress_lzstring.decompressFromBase64(x['windows']))
     if 'data' in x:
-      x['data'] = json.loads(decompress_lzstring.decompressFromBase64(x['data']))
+      data_type = type(x['data'])
+      if data_type == unicode or data_type == str:
+        x['data'] = json.loads(decompress_lzstring.decompressFromBase64(x['data']))
     yield x
 
 def iterate_data_compressed(filename):
   for x in json.load(open(filename)):
     yield x
 
+def iterate_data_jsondata_reverse(data):
+  for x in reversed(data):
+    if 'windows' in x:
+      data_type = type(x['windows'])
+      if data_type == unicode or data_type == str:
+        x['windows'] = json.loads(decompress_lzstring.decompressFromBase64(x['windows']))
+    if 'data' in x:
+      data_type = type(x['data'])
+      if data_type == unicode or data_type == str:
+        x['data'] = json.loads(decompress_lzstring.decompressFromBase64(x['data']))
+    yield x
+
 def iterate_data_reverse(filename):
   for x in reversed(json.load(open(filename))):
     if 'windows' in x:
-      x['windows'] = json.loads(decompress_lzstring.decompressFromBase64(x['windows']))
+      data_type = type(x['windows'])
+      if data_type == unicode or data_type == str:
+        x['windows'] = json.loads(decompress_lzstring.decompressFromBase64(x['windows']))
     if 'data' in x:
-      x['data'] = json.loads(decompress_lzstring.decompressFromBase64(x['data']))
+      data_type = type(x['data'])
+      if data_type == unicode or data_type == str:
+        x['data'] = json.loads(decompress_lzstring.decompressFromBase64(x['data']))
     yield x
 
 def iterate_data_compressed_reverse(filename):
@@ -95,4 +159,10 @@ def iterate_data_compressed_reverse(filename):
 
 def url_to_domain(url):
   return urlparse.urlparse(url).netloc
+
+
+def shuffled(l):
+  l = l[:]
+  random.shuffle(l)
+  return l
 

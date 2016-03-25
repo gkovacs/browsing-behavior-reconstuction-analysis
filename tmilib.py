@@ -1,19 +1,59 @@
 #!/usr/bin/env python
-# md5: e481bd9c9e275428f21c51fc70a662cd
+# md5: 5e66effacf4bcdedaddf76c7eacf5cb1
 # coding: utf-8
 
 from tmilib_base import *
+from session_tracker import SessionTracker
 
 
-def create_if_doesnt_exist(filename, function):
+def get_compute_function_from_name(name):
+  if name.endswith('.json'):
+    name = name[:-5] # removes .json
+  mapping = {
+    # single json files
+    'username_to_mturk_id': compute_username_to_mturk_id,
+    'mturkid_to_history_pages': compute_mturkid_to_history_pages,
+    'mturkid_to_history_visits': compute_mturkid_to_history_visits,
+    'mturkid_to_time_last_active': compute_mturkid_to_time_last_active,
+    'domains_list': compute_domains_list,
+    # multiuser directories
+    'tab_focus_times_for_user': compute_tab_focus_times_for_user,
+  }
+  if name in mapping:
+    return mapping[name]
+  raise Exception('get_function_for_name failed for ' + name)
+
+
+def create_if_doesnt_exist(filename, function=None):
+  if function == None:
+    function = get_compute_function_from_name(filename)
   if sdir_exists(filename):
     return
   data = function()
   sdir_dumpjson(filename, data)
 
-def create_and_get(filename, function):
+def create_and_get(filename, function=None):
   create_if_doesnt_exist(filename, function)
   return sdir_loadjson(filename)
+
+
+def compute_function_for_key(key, name, function=None):
+  if function == None:
+    function = get_compute_function_from_name(name)
+  outfile = name + '/' + key + '.json'
+  if sdir_exists(outfile):
+    return
+  result = function(key)
+  ensure_sdir_subdir_exists(name)
+  sdir_dumpjson(outfile, result)
+
+def get_function_for_key(key, name, function=None):
+  compute_function_for_key(key, name, function)
+  outfile = name + '/' + key + '.json'
+  return sdir_loadjson(outfile)
+
+
+
 
 
 def compute_username_to_mturk_id():
@@ -31,7 +71,8 @@ def compute_username_to_mturk_id():
   return username_to_mturk_id
 
 def get_username_to_mturk_id():
-  return create_and_get('username_to_mturk_id.json', compute_username_to_mturk_id)
+  #return create_and_get('username_to_mturk_id.json', compute_username_to_mturk_id)
+  return create_and_get('username_to_mturk_id.json')
 
 
 @memoized
@@ -76,10 +117,12 @@ def compute_mturkid_to_history_visits():
   return compute_mturkid_to_history_pages_and_visits()[1]
 
 def get_mturkid_to_history_pages():
-  return create_and_get('mturkid_to_history_pages.json', compute_mturkid_to_history_pages)
+  #return create_and_get('mturkid_to_history_pages.json', compute_mturkid_to_history_pages)
+  return create_and_get('mturkid_to_history_pages.json')
 
 def get_mturkid_to_history_visits():
-  return create_and_get('mturkid_to_history_visits.json', compute_mturkid_to_history_visits)
+  #return create_and_get('mturkid_to_history_visits.json', compute_mturkid_to_history_visits)
+  return create_and_get('mturkid_to_history_visits.json')
 
 
 def compute_mturkid_to_time_last_active():
@@ -96,7 +139,8 @@ def compute_mturkid_to_time_last_active():
   return mturkid_to_time_last_active
 
 def get_mturkid_to_time_last_active():
-  return create_and_get('mturkid_to_time_last_active.json', compute_mturkid_to_time_last_active)
+  #return create_and_get('mturkid_to_time_last_active.json', compute_mturkid_to_time_last_active)
+  return create_and_get('mturkid_to_time_last_active.json')
 
 
 def compute_domains_list():
@@ -110,5 +154,37 @@ def compute_domains_list():
   return list(alldomains)
 
 def get_domains_list():
-  return create_and_get('domains_list.json', compute_domains_list)
+  #return create_and_get('domains_list.json', compute_domains_list)
+  return create_and_get('domains_list.json')
+
+
+
+
+
+def compute_tab_focus_times_for_user(user):
+  logfile = get_logfile_for_user(user)
+  current_session_tracker = SessionTracker()
+  for line in iterate_data(logfile):
+    current_session_tracker.process_input(line)
+  current_session_tracker.end_input()
+  return current_session_tracker.get_output()
+
+def get_tab_focus_times_for_user(user):
+  return get_function_for_key(user, 'tab_focus_times_for_user')
+
+def compute_tab_focus_times_for_all_users():
+  for user in list_users():
+    #filesize = path.getsize(filename)
+    #filesize_megabytes = filesize / (1000.0*1000.0)
+    #if filesize_megabytes > 0.1:
+    #  continue
+    print user
+    compute_function_for_key(user, 'tab_focus_times_for_user')
+
+def compute_tab_focus_times_for_all_users_randomized():
+  for user in shuffled(list_users()):
+    print user
+    compute_function_for_key(user, 'tab_focus_times_for_user')
+
+#compute_tab_focus_times_for_all_users()
 
