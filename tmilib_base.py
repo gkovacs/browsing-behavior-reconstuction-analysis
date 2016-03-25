@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: a9c1a76d1a1d1191ddc138118fdf948c
+# md5: 0d3fa0c6c9d2b1cde9fcaf4593fd3f17
 # coding: utf-8
 
 import urlparse
@@ -22,6 +22,7 @@ import numpy
 import time
 import datetime
 import random
+from operator import itemgetter
 
 
 @memoized
@@ -137,6 +138,9 @@ def iterate_data(filename):
       if data_type == unicode or data_type == str:
         x['data'] = json.loads(decompress_lzstring.decompressFromBase64(x['data']))
     yield x
+
+def iterate_data_timesorted(filename):
+  return sorted(iterate_data(filename), key=itemgetter('time'))
 
 def iterate_data_compressed(filename):
   for x in json.load(open(filename)):

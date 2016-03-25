@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: a45eb5b849d7d0b2c584b59e90ac2e01
+# md5: 3ff585763c7405dd4225b3c538c42777
 # coding: utf-8
 
 from tmilib_base import *
@@ -163,10 +163,20 @@ def get_domains_list():
 
 
 
+'''
 def compute_tab_focus_times_for_user(user):
   logfile = get_logfile_for_user(user)
   current_session_tracker = SessionTracker()
   for line in iterate_data(logfile):
+    current_session_tracker.process_input(line)
+  current_session_tracker.end_input()
+  return current_session_tracker.get_output()
+'''
+
+def compute_tab_focus_times_for_user(user):
+  logfile = get_logfile_for_user(user)
+  current_session_tracker = SessionTracker()
+  for line in iterate_data_timesorted(logfile):
     current_session_tracker.process_input(line)
   current_session_tracker.end_input()
   return current_session_tracker.get_output()
@@ -247,4 +257,7 @@ def compute_history_visits_for_all_users_randomized():
     compute_function_for_key(user, 'history_visits_for_user')
 
 #compute_tab_focus_times_for_all_users()
+
+
+
 
