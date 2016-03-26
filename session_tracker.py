@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: af3b4e45c340c4df3bf65c3e60faed63
+# md5: 787755b73814a026c79dac53d295889c
 # coding: utf-8
 
 def get_focused_tab(data):
@@ -32,8 +32,8 @@ class SessionTracker:
   def end_session(self, curtime):
     if 'url' in self.curitem:
       last_active = self.curitem['active']
-      # ensures that end < last_active+60 seconds
-      self.curitem['end'] = min(curtime, last_active + 60*1000)
+      # ensures that end < last_active+30 minutes=1800 secs (we would normally expect that an idle event would have caught this)
+      self.curitem['end'] = min(curtime, last_active + 1800*1000)
       self.output.append(self.curitem)
       self.curitem = {}
   def start_session(self, url, curtime):
@@ -52,8 +52,11 @@ class SessionTracker:
       return
     prevurl = self.curitem['url']
     if url == prevurl: # still on same site
-      self.curitem['active'] = curtime
-      return
+      # has it been less than 60 seconds since last activity?
+      prev_active_time = self.curitem['active']
+      if curtime < prev_active_time + 60*1000:
+        self.curitem['active'] = curtime
+        return
     # have gone to different site
     self.end_session(curtime)
     self.start_session(url, curtime)

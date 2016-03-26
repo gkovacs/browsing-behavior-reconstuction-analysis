@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 0d3fa0c6c9d2b1cde9fcaf4593fd3f17
+# md5: 05bd5edf0a2056d6ef4409e607e00aac
 # coding: utf-8
 
 import urlparse
@@ -141,6 +141,9 @@ def iterate_data(filename):
 
 def iterate_data_timesorted(filename):
   return sorted(iterate_data(filename), key=itemgetter('time'))
+
+def iterate_data_compressed_timesorted(filename):
+  return sorted(iterate_data_compressed(filename), key=itemgetter('time'))
 
 def iterate_data_compressed(filename):
   for x in json.load(open(filename)):

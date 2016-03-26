@@ -1,29 +1,42 @@
 #!/usr/bin/env python
-# md5: 3ff585763c7405dd4225b3c538c42777
+# md5: de3c5b09077337e3de75c2b24f8bd391
 # coding: utf-8
 
 from tmilib_base import *
 from session_tracker import SessionTracker
 
 
+
+
+
+function_name_to_function_mapping = {
+  # single json files
+  
+  #'username_to_mturk_id': compute_username_to_mturk_id,
+  #'mturkid_to_history_pages': compute_mturkid_to_history_pages,
+  #'mturkid_to_history_visits': compute_mturkid_to_history_visits,
+  #'mturkid_to_time_last_active': compute_mturkid_to_time_last_active,
+  #'domains_list': compute_domains_list,
+  
+  # multiuser directories
+  
+  #'tab_focus_times_for_user': compute_tab_focus_times_for_user,
+  #'history_pages_for_user': compute_history_pages_for_user,
+  #'history_visits_for_user': compute_history_visits_for_user,
+  #'history_ordered_visits_for_user': compute_history_ordered_visits_for_user,
+}
+
 def get_compute_function_from_name(name):
   if name.endswith('.json'):
     name = name[:-5] # removes .json
-  mapping = {
-    # single json files
-    'username_to_mturk_id': compute_username_to_mturk_id,
-    'mturkid_to_history_pages': compute_mturkid_to_history_pages,
-    'mturkid_to_history_visits': compute_mturkid_to_history_visits,
-    'mturkid_to_time_last_active': compute_mturkid_to_time_last_active,
-    'domains_list': compute_domains_list,
-    # multiuser directories
-    'tab_focus_times_for_user': compute_tab_focus_times_for_user,
-    'history_pages_for_user': compute_history_pages_for_user,
-    'history_visits_for_user': compute_history_visits_for_user,
-  }
-  if name in mapping:
-    return mapping[name]
+  if name in function_name_to_function_mapping:
+    return function_name_to_function_mapping[name]
+  compute_function = globals().get('compute_' + name, None)
+  if compute_function != None:
+    function_name_to_function_mapping[name] = compute_function
+    return compute_function
   raise Exception('get_function_for_name failed for ' + name)
+
 
 
 def create_if_doesnt_exist(filename, function=None):
@@ -236,6 +249,12 @@ def compute_history_visits_for_user(user):
         output[k] = v
   return output
 
+def get_history_pages_for_user(user):
+  return get_function_for_key(user, 'history_pages_for_user')
+
+def get_history_visits_for_user(user):
+  return get_function_for_key(user, 'history_visits_for_user')
+
 def compute_history_pages_for_all_users():
   for user in list_users_with_hist():
     print user
@@ -259,5 +278,54 @@ def compute_history_visits_for_all_users_randomized():
 #compute_tab_focus_times_for_all_users()
 
 
+def compute_history_ordered_visits_for_user(user):
+  url_to_visits = get_history_visits_for_user(user)
+  ordered_visits = []
+  for url,visits in url_to_visits.items():
+    for visit in visits:
+      visit['url'] = url
+    ordered_visits.extend(visits)
+  ordered_visits.sort(key=itemgetter('visitTime'))
+  return ordered_visits
 
+def get_history_ordered_visits_for_user(user):
+  return get_function_for_key(user, 'history_ordered_visits_for_user')
+
+def compute_history_ordered_visits_for_all_users():
+  for user in list_users_with_hist():
+    print user
+    compute_function_for_key(user, 'history_ordered_visits_for_user')
+
+def compute_history_ordered_visits_for_all_users_randomized():
+  for user in shuffled(list_users_with_hist()):
+    print user
+    compute_function_for_key(user, 'history_ordered_visits_for_user')
+
+
+def compute_mlog_active_times_for_user(user):
+  mlogfile = get_mlogfile_for_user(user)
+  output = []
+  for line in iterate_data_timesorted(mlogfile):
+    if 'data' in line:
+      curitem = {'url': line['data']['location'], 'time': line['time']}
+    else:
+      curitem = {'url': line['location'], 'time': line['time']}
+    output.append(curitem)
+  return output
+
+def get_mlog_active_times_for_user(user):
+  return get_function_for_key(user, 'mlog_active_times_for_user')
+
+def compute_mlog_active_times_for_all_users():
+  for user in list_users_with_mlog():
+    print user
+    compute_function_for_key(user, 'mlog_active_times_for_user')
+
+def compute_mlog_active_times_for_all_users_randomized():
+  for user in shuffled(list_users_with_mlog()):
+    print user
+    compute_function_for_key(user, 'mlog_active_times_for_user')
+
+#print compute_mlog_active_times_for_user('ZDMgTG3hUx')
+#compute_function_for_key('ZDMgTG3hUx', 'mlog_active_times_for_user')
 
