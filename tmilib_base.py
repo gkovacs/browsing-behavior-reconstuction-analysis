@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 05bd5edf0a2056d6ef4409e607e00aac
+# md5: 721fbd68119c0c7ebffc400c93c3de9f
 # coding: utf-8
 
 import urlparse
@@ -8,7 +8,10 @@ from glob import glob
 import os
 from os import path
 
-import decompress_lzstring
+#import decompress_lzstring
+import pyximport
+pyximport.install()
+from decompress_lzstring_base64_cython import decompressFromBase64
 
 from memoized import memoized
 
@@ -23,11 +26,17 @@ import time
 import datetime
 import random
 from operator import itemgetter
+import heapq
+
+
+
 
 
 @memoized
 def get_basedir():
-  return sorted([x for x in glob('/home/gkovacs/tmi-data/local_*') if path.isfile(x + '/active')], reverse=True)[0]
+  output = [x for x in glob('/home/gkovacs/tmi-data/local_*') if path.isfile(x + '/active')]
+  output.sort(reverse=True)
+  return output[0]
   #return '/home/gkovacs/tmi-data/latest'
 
 @memoized
@@ -44,7 +53,8 @@ def list_histfiles():
 
 @memoized
 def list_users():
-  return [filename_to_username(x) for x in list_logfiles()]
+  #return [filename_to_username(x) for x in list_logfiles()]
+  return list_users_with_log_and_mlog()
 
 @memoized
 def list_users_with_hist():
@@ -53,6 +63,15 @@ def list_users_with_hist():
 @memoized
 def list_users_with_mlog():
   return [filename_to_username(x) for x in list_mlogfiles()]
+
+@memoized
+def list_users_with_log():
+  return [filename_to_username(x) for x in list_logfiles()]
+
+@memoized
+def list_users_with_log_and_mlog():
+  users_with_mlog_set = set(list_users_with_mlog())
+  return [x for x in list_users_with_log() if x in users_with_mlog_set]
 
 
 @memoized
@@ -84,9 +103,29 @@ def sdir_open(filename, mode='r'):
 def sdir_loadjson(filename):
   return json.load(sdir_open(filename))
 
+def sdir_loadjsonlines(filename):
+  jfile = sdir_open(filename)
+  for line in jfile:
+    yield json.loads(line)
+  #line = jfile.readline()
+  #while line != None:
+  #  yield json.loads(line)
+  #  line = jfile.readline()
+
 def sdir_dumpjson(filename, data):
   ensure_sdir_exists()
   return json.dump(data, sdir_open(filename, 'w'))
+
+def sdir_dumpjsonlines(filename, data):
+  ensure_sdir_exists()
+  outfile = sdir_open(filename, 'w')
+  for line in data:
+    outfile.write(json.dumps(line))
+    outfile.write('\n')
+  outfile.close()
+
+
+
 
 
 def dumpdir_path(filename):
@@ -112,70 +151,57 @@ def filename_to_username(filename):
 def decompress_data_lzstring_base64(data):
   data_type = type(data)
   if data_type == unicode or data_type == str:
-    return json.loads(decompress_lzstring.decompressFromBase64(data))
+    return json.loads(decompressFromBase64(data))
   return data
+
+def uncompress_data_subfields(x):
+  if 'windows' in x:
+    data_type = type(x['windows'])
+    if data_type == unicode or data_type == str:
+      x['windows'] = json.loads(decompressFromBase64(x['windows']))
+  if 'data' in x:
+    data_type = type(x['data'])
+    if data_type == unicode or data_type == str:
+      x['data'] = json.loads(decompressFromBase64(x['data']))
+  return x
 
 def iterate_data_jsondata(data):
   for x in data:
-    if 'windows' in x:
-      data_type = type(x['windows'])
-      if data_type == unicode or data_type == str:
-        x['windows'] = json.loads(decompress_lzstring.decompressFromBase64(x['windows']))
-    if 'data' in x:
-      data_type = type(x['data'])
-      if data_type == unicode or data_type == str:
-        x['data'] = json.loads(decompress_lzstring.decompressFromBase64(x['data']))
-    yield x
+    yield uncompress_data_subfields(x)
 
 def iterate_data(filename):
   for x in json.load(open(filename)):
-    if 'windows' in x:
-      data_type = type(x['windows'])
-      if data_type == unicode or data_type == str:
-        x['windows'] = json.loads(decompress_lzstring.decompressFromBase64(x['windows']))
-    if 'data' in x:
-      data_type = type(x['data'])
-      if data_type == unicode or data_type == str:
-        x['data'] = json.loads(decompress_lzstring.decompressFromBase64(x['data']))
-    yield x
+    yield uncompress_data_subfields(x)
 
 def iterate_data_timesorted(filename):
-  return sorted(iterate_data(filename), key=itemgetter('time'))
+  alldata = json.load(open(filename))
+  alldata.sort(key=itemgetter('time'))
+  for x in alldata:
+    yield uncompress_data_subfields(x)
 
 def iterate_data_compressed_timesorted(filename):
-  return sorted(iterate_data_compressed(filename), key=itemgetter('time'))
+  alldata = json.load(open(filename))
+  alldata.sort(key=itemgetter('time'))
+  return alldata
 
 def iterate_data_compressed(filename):
-  for x in json.load(open(filename)):
-    yield x
+  return json.load(open(filename))
 
 def iterate_data_jsondata_reverse(data):
   for x in reversed(data):
-    if 'windows' in x:
-      data_type = type(x['windows'])
-      if data_type == unicode or data_type == str:
-        x['windows'] = json.loads(decompress_lzstring.decompressFromBase64(x['windows']))
-    if 'data' in x:
-      data_type = type(x['data'])
-      if data_type == unicode or data_type == str:
-        x['data'] = json.loads(decompress_lzstring.decompressFromBase64(x['data']))
-    yield x
+    yield uncompress_data_subfields(x)
 
 def iterate_data_reverse(filename):
-  for x in reversed(json.load(open(filename))):
-    if 'windows' in x:
-      data_type = type(x['windows'])
-      if data_type == unicode or data_type == str:
-        x['windows'] = json.loads(decompress_lzstring.decompressFromBase64(x['windows']))
-    if 'data' in x:
-      data_type = type(x['data'])
-      if data_type == unicode or data_type == str:
-        x['data'] = json.loads(decompress_lzstring.decompressFromBase64(x['data']))
-    yield x
+  alldata = json.load(open(filename))
+  alldata.reverse()
+  for x in alldata:
+    yield uncompress_data_subfields(x)
 
 def iterate_data_compressed_reverse(filename):
-  for x in reversed(json.load(open(filename))):
-    yield x
+  alldata = json.load(open(filename))
+  alldata.reverse()
+  return alldata
+
 
 
 def url_to_domain(url):
@@ -186,4 +212,60 @@ def shuffled(l):
   l = l[:]
   random.shuffle(l)
   return l
+
+
+def orderedMerge(*iterables, **kwargs):
+  # from http://stackoverflow.com/questions/464342/combining-two-sorted-lists-in-python
+  """Take a list of ordered iterables; return as a single ordered generator.
+
+  @param key:     function, for each item return key value
+          (Hint: to sort descending, return negated key value)
+
+  @param unique:  boolean, return only first occurrence for each key value?
+  """
+  key     = kwargs.get('key', (lambda x: x))
+  unique  = kwargs.get('unique', False)
+
+  _heapify       = heapq.heapify
+  _heapreplace   = heapq.heapreplace
+  _heappop       = heapq.heappop
+  _StopIteration = StopIteration
+
+  # preprocess iterators as heapqueue
+  h = []
+  for itnum, it in enumerate(map(iter, iterables)):
+    try:
+      next  = it.next
+      data   = next()
+      keyval = key(data)
+      h.append([keyval, itnum, data, next])
+    except _StopIteration:
+      pass
+  _heapify(h)
+
+  # process iterators in ascending key order
+  oldkeyval = None
+  while True:
+    try:
+      while True:
+        keyval, itnum, data, next = s = h[0]  # get smallest-key value
+                            # raises IndexError when h is empty
+        # if unique, skip duplicate keys
+        if unique and keyval==oldkeyval:
+          pass
+        else:
+          yield data
+          oldkeyval = keyval
+
+        # load replacement value from same iterator
+        s[2] = data = next()        # raises StopIteration when exhausted
+        s[0] = key(data)
+        _heapreplace(h, s)          # restore heap condition
+    except _StopIteration:
+      _heappop(h)                     # remove empty iterator
+    except IndexError:
+      return
+
+
+
 

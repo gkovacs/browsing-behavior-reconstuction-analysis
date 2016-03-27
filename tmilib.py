@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: de3c5b09077337e3de75c2b24f8bd391
+# md5: 4574d10dd84be08221d771ab34222cc4
 # coding: utf-8
 
 from tmilib_base import *
@@ -58,6 +58,7 @@ def compute_function_for_key(key, name, function=None):
   outfile = name + '/' + key + '.json'
   if sdir_exists(outfile):
     return
+  print outfile
   result = function(key)
   ensure_sdir_subdir_exists(name)
   sdir_dumpjson(outfile, result)
@@ -66,6 +67,24 @@ def get_function_for_key(key, name, function=None):
   compute_function_for_key(key, name, function)
   outfile = name + '/' + key + '.json'
   return sdir_loadjson(outfile)
+
+
+
+def compute_function_for_key_lines(key, name, function=None):
+  if function == None:
+    function = get_compute_function_from_name(name)
+  outfile = name + '/' + key + '.jsonlines'
+  if sdir_exists(outfile):
+    return
+  print outfile
+  ensure_sdir_subdir_exists(name)
+  result = function(key)
+  sdir_dumpjsonlines(outfile, result)  
+
+def get_function_for_key_lines(key, name, function=None):
+  compute_function_for_key_lines(key, name, function)
+  outfile = name + '/' + key + '.jsonlines'
+  return sdir_loadjsonlines(outfile)
 
 
 
@@ -117,7 +136,7 @@ def compute_mturkid_to_history_pages_and_visits():
         mturkid_to_hid[mturkid] = hid
         mturkid_to_history_pages[mturkid] = []
         mturkid_to_history_visits[mturkid] = {}
-      data = json.loads(decompress_lzstring.decompressFromBase64(line['data']))
+      data = json.loads(decompressFromBase64(line['data']))
       if evt == 'history_pages':
         mturkid_to_history_pages[mturkid] = data
       if evt == 'history_visits':
@@ -186,6 +205,7 @@ def compute_tab_focus_times_for_user(user):
   return current_session_tracker.get_output()
 '''
 
+'''
 def compute_tab_focus_times_for_user(user):
   logfile = get_logfile_for_user(user)
   current_session_tracker = SessionTracker()
@@ -193,27 +213,43 @@ def compute_tab_focus_times_for_user(user):
     current_session_tracker.process_input(line)
   current_session_tracker.end_input()
   return current_session_tracker.get_output()
+'''
+
+'''
+def compute_tab_focus_times_for_user(user):
+  current_session_tracker = SessionTracker()
+  for line in iterate_logs_for_user(user):
+    current_session_tracker.process_input(line)
+  current_session_tracker.end_input()
+  return current_session_tracker.get_output()
+'''
+
+def compute_tab_focus_times_for_user(user):
+  current_session_tracker = SessionTracker()
+  for line in get_log_with_mlog_active_times_for_user(user):
+    current_session_tracker.process_input(uncompress_data_subfields(line))
+  current_session_tracker.end_input()
+  return current_session_tracker.get_output()
 
 def get_tab_focus_times_for_user(user):
   return get_function_for_key(user, 'tab_focus_times_for_user')
 
 def compute_tab_focus_times_for_all_users():
-  for user in list_users():
+  for user in list_users_with_log_and_mlog():
     #filesize = path.getsize(filename)
     #filesize_megabytes = filesize / (1000.0*1000.0)
     #if filesize_megabytes > 0.1:
     #  continue
-    print user
     compute_function_for_key(user, 'tab_focus_times_for_user')
 
 def compute_tab_focus_times_for_all_users_randomized():
-  for user in shuffled(list_users()):
-    print user
+  for user in shuffled(list_users_with_log_and_mlog()):
     compute_function_for_key(user, 'tab_focus_times_for_user')
 
 #compute_tab_focus_times_for_all_users()
 
 
+'''
 def compute_history_pages_for_user(user):
   filename = get_histfile_for_user(user)
   all_lines = json.load(open(filename))
@@ -248,6 +284,38 @@ def compute_history_visits_for_user(user):
       for k,v in data.items():
         output[k] = v
   return output
+'''
+
+def compute_history_pages_for_user(user):
+  max_hid = 0
+  for line in iterate_hist_for_user_compressed(user):
+    hid = line['hid']
+    max_hid = max(hid, max_hid)
+  for line in iterate_hist_for_user_compressed(user):
+    hid = line['hid']
+    if hid < max_hid:
+      continue
+    evt = line['evt']
+    if evt == 'history_pages':
+      data = decompress_data_lzstring_base64(line['data'])
+      return data
+
+def compute_history_visits_for_user(user):
+  max_hid = 0
+  for line in iterate_hist_for_user_compressed(user):
+    hid = line['hid']
+    max_hid = max(hid, max_hid)
+  output = {}
+  for line in iterate_hist_for_user_compressed(user):
+    hid = line['hid']
+    if hid < max_hid:
+      continue
+    evt = line['evt']
+    if evt == 'history_visits':
+      data = decompress_data_lzstring_base64(line['data'])
+      for k,v in data.items():
+        output[k] = v
+  return output
 
 def get_history_pages_for_user(user):
   return get_function_for_key(user, 'history_pages_for_user')
@@ -257,22 +325,18 @@ def get_history_visits_for_user(user):
 
 def compute_history_pages_for_all_users():
   for user in list_users_with_hist():
-    print user
     compute_function_for_key(user, 'history_pages_for_user')
 
 def compute_history_pages_for_all_users_randomized():
   for user in shuffled(list_users_with_hist()):
-    print user
     compute_function_for_key(user, 'history_pages_for_user')
 
 def compute_history_visits_for_all_users():
   for user in list_users_with_hist():
-    print user
     compute_function_for_key(user, 'history_visits_for_user')
 
 def compute_history_visits_for_all_users_randomized():
   for user in shuffled(list_users_with_hist()):
-    print user
     compute_function_for_key(user, 'history_visits_for_user')
 
 #compute_tab_focus_times_for_all_users()
@@ -293,19 +357,29 @@ def get_history_ordered_visits_for_user(user):
 
 def compute_history_ordered_visits_for_all_users():
   for user in list_users_with_hist():
-    print user
     compute_function_for_key(user, 'history_ordered_visits_for_user')
 
 def compute_history_ordered_visits_for_all_users_randomized():
   for user in shuffled(list_users_with_hist()):
-    print user
     compute_function_for_key(user, 'history_ordered_visits_for_user')
 
 
+'''
 def compute_mlog_active_times_for_user(user):
   mlogfile = get_mlogfile_for_user(user)
   output = []
   for line in iterate_data_timesorted(mlogfile):
+    if 'data' in line:
+      curitem = {'url': line['data']['location'], 'time': line['time']}
+    else:
+      curitem = {'url': line['location'], 'time': line['time']}
+    output.append(curitem)
+  return output
+'''
+
+def compute_mlog_active_times_for_user(user):
+  output = []
+  for line in iterate_mlogs_for_user(user):
     if 'data' in line:
       curitem = {'url': line['data']['location'], 'time': line['time']}
     else:
@@ -318,14 +392,110 @@ def get_mlog_active_times_for_user(user):
 
 def compute_mlog_active_times_for_all_users():
   for user in list_users_with_mlog():
-    print user
     compute_function_for_key(user, 'mlog_active_times_for_user')
 
 def compute_mlog_active_times_for_all_users_randomized():
   for user in shuffled(list_users_with_mlog()):
-    print user
     compute_function_for_key(user, 'mlog_active_times_for_user')
 
 #print compute_mlog_active_times_for_user('ZDMgTG3hUx')
 #compute_function_for_key('ZDMgTG3hUx', 'mlog_active_times_for_user')
+
+
+def compute_log_with_mlog_active_times_for_user(user):
+  mlog_active_times_for_user_raw = get_mlog_active_times_for_user(user)
+  def add_evt_mlog_to_generator(gen):
+    for x in gen:
+      x['evt'] = 'mlog'
+      yield x
+  mlog_active_times_for_user = add_evt_mlog_to_generator(mlog_active_times_for_user_raw)
+  logs_for_user = get_log_timesorted_lines_for_user(user)
+  return orderedMerge(logs_for_user, mlog_active_times_for_user, key=itemgetter('time'))
+
+def get_log_with_mlog_active_times_for_user(user):
+  return get_function_for_key_lines(user, 'log_with_mlog_active_times_for_user')
+
+def compute_log_with_mlog_active_times_for_all_users():
+  for user in list_users_with_log_and_mlog():
+    compute_function_for_key_lines(user, 'log_with_mlog_active_times_for_user')
+
+def compute_log_with_mlog_active_times_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog()):
+    compute_function_for_key_lines(user, 'log_with_mlog_active_times_for_user')
+
+
+def compute_mlog_timesorted_lines_for_user(user):
+  mlogfile = get_mlogfile_for_user(user)
+  alldata = json.load(open(mlogfile))
+  alldata.sort(key=itemgetter('time'))
+  return alldata
+
+def get_mlog_timesorted_lines_for_user(user):
+  return get_function_for_key_lines(user, 'mlog_timesorted_lines_for_user')
+
+def compute_mlog_timesorted_lines_for_all_users():
+  for user in list_users_with_mlog():
+    compute_function_for_key_lines(user, 'mlog_timesorted_lines_for_user')
+
+def compute_mlog_timesorted_lines_for_all_users_randomized():
+  for user in shuffled(list_users_with_mlog()):
+    compute_function_for_key_lines(user, 'mlog_timesorted_lines_for_user')
+
+
+def compute_log_timesorted_lines_for_user(user):
+  logfile = get_logfile_for_user(user)
+  alldata = json.load(open(logfile))
+  alldata.sort(key=itemgetter('time'))
+  return alldata
+
+def get_log_timesorted_lines_for_user(user):
+  return get_function_for_key_lines(user, 'log_timesorted_lines_for_user')
+
+def compute_log_timesorted_lines_for_all_users():
+  for user in list_users_with_log():
+    compute_function_for_key_lines(user, 'log_timesorted_lines_for_user')
+
+def compute_log_timesorted_lines_for_all_users_randomized():
+  for user in shuffled(list_users_with_log()):
+    compute_function_for_key_lines(user, 'log_timesorted_lines_for_user')
+
+
+def compute_hist_timesorted_lines_for_user(user):
+  histfile = get_histfile_for_user(user)
+  alldata = json.load(open(histfile))
+  alldata.sort(key=itemgetter('time'))
+  return alldata
+
+def get_hist_timesorted_lines_for_user(user):
+  return get_function_for_key_lines(user, 'hist_timesorted_lines_for_user')
+
+def compute_hist_timesorted_lines_for_all_users():
+  for user in list_users_with_hist():
+    compute_function_for_key_lines(user, 'hist_timesorted_lines_for_user')
+
+def compute_hist_timesorted_lines_for_all_users_randomized():
+  for user in shuffled(list_users_with_hist()):
+    compute_function_for_key_lines(user, 'hist_timesorted_lines_for_user')
+
+
+def iterate_mlogs_for_user(user):
+  for line in get_mlog_timesorted_lines_for_user(user):
+    yield uncompress_data_subfields(line)
+
+def iterate_mlogs_for_user_compressed(user):
+  return get_mlog_timesorted_lines_for_user(user)
+
+def iterate_logs_for_user(user):
+  for line in get_log_timesorted_lines_for_user(user):
+    yield uncompress_data_subfields(line)
+
+def iterate_logs_for_user_compressed(user):
+  return get_log_timesorted_lines_for_user(user)
+
+def iterate_hist_for_user(user):
+  for line in get_hist_timesorted_lines_for_user(user):
+    yield uncompress_data_subfields(line)
+
+def iterate_hist_for_user_compressed(user):
+  return get_hist_timesorted_lines_for_user(user)
 

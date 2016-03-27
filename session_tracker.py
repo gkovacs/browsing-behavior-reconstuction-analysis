@@ -1,8 +1,10 @@
 #!/usr/bin/env python
-# md5: 787755b73814a026c79dac53d295889c
+# md5: 48b74b1eacd3a0c7b24dcc28c6514cf7
 # coding: utf-8
 
 def get_focused_tab(data):
+  if data['evt'] == 'mlog':
+    return data['url']
   windows = data['windows']
   for window in windows:
     focused = window['focused']
@@ -33,7 +35,7 @@ class SessionTracker:
     if 'url' in self.curitem:
       last_active = self.curitem['active']
       # ensures that end < last_active+30 minutes=1800 secs (we would normally expect that an idle event would have caught this)
-      self.curitem['end'] = min(curtime, last_active + 1800*1000)
+      self.curitem['end'] = min(curtime, last_active + 60*1000)
       self.output.append(self.curitem)
       self.curitem = {}
   def start_session(self, url, curtime):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 5aa9ea23b6cf06ed2ffdfa9f69cfe86e
+# md5: bcf9bab4a93b62e4bf115a1136a643d9
 # coding: utf-8
 
 from tmilib import *
@@ -31,11 +31,17 @@ else:
 #print 'history_ordered_visits_for_all_users_randomized'
 #compute_history_ordered_visits_for_all_users_randomized()
 
-print 'mlog_active_times_for_all_users'
+compute_mlog_timesorted_lines_for_all_users_randomized()
+compute_hist_timesorted_lines_for_all_users_randomized()
+compute_log_timesorted_lines_for_all_users_randomized()
 compute_mlog_active_times_for_all_users_randomized()
+compute_log_with_mlog_active_times_for_all_users_randomized()
+
+#print 'mlog_active_times_for_all_users'
+#compute_mlog_active_times_for_all_users_randomized()
 
 #print 'tab_focus_times_for_all_users_randomized'
-#compute_tab_focus_times_for_all_users_randomized()
+compute_tab_focus_times_for_all_users_randomized()
 
 
 #print 'compute_tab_focus_times_for_all_users'
