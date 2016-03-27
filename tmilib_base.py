@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 721fbd68119c0c7ebffc400c93c3de9f
+# md5: 4826dd76abc3d56a06ab3d490e9c0143
 # coding: utf-8
 
 import urlparse
@@ -32,8 +32,14 @@ import heapq
 
 
 
+tmi_overrides = {
+  'basedir': None,
+}
+
 @memoized
 def get_basedir():
+  if tmi_overrides['basedir'] != None:
+    return tmi_overrides['basedir']
   output = [x for x in glob('/home/gkovacs/tmi-data/local_*') if path.isfile(x + '/active')]
   output.sort(reverse=True)
   return output[0]
