@@ -1,8 +1,10 @@
 #!/usr/bin/env python
-# md5: bcf9bab4a93b62e4bf115a1136a643d9
+# md5: 9e1792e10e7372ce813df59698c71705
 # coding: utf-8
 
 from tmilib import *
+
+tmi_overrides['basedir'] = '/home/gkovacs/tmi-data/local_2016-03-27_19:25:47-07:00'
 
 
 '''
@@ -31,17 +33,28 @@ else:
 #print 'history_ordered_visits_for_all_users_randomized'
 #compute_history_ordered_visits_for_all_users_randomized()
 
-compute_mlog_timesorted_lines_for_all_users_randomized()
-compute_hist_timesorted_lines_for_all_users_randomized()
-compute_log_timesorted_lines_for_all_users_randomized()
-compute_mlog_active_times_for_all_users_randomized()
-compute_log_with_mlog_active_times_for_all_users_randomized()
+task_list = [
+  compute_hist_timesorted_lines_for_all_users_randomized,
+  compute_log_timesorted_lines_for_all_users_randomized,
+  compute_mlog_timesorted_lines_for_all_users_randomized,
+  compute_history_valid_hids_for_all_users_randomized,
+  compute_history_pages_for_all_users_randomized,
+  compute_history_visits_for_all_users_randomized,
+  compute_mlog_active_times_for_all_users_randomized,
+  compute_tab_focus_times_for_all_users_randomized,
+  compute_log_with_mlog_active_times_for_all_users_randomized,
+]
 
-#print 'mlog_active_times_for_all_users'
-#compute_mlog_active_times_for_all_users_randomized()
+for fn in shuffled(task_list):
+  fn()
 
-#print 'tab_focus_times_for_all_users_randomized'
-compute_tab_focus_times_for_all_users_randomized()
+task_list = [
+  precompute_domains_list,
+  precompute_username_to_mturk_id,
+]
+
+for fn in shuffled(task_list):
+  fn()
 
 
 #print 'compute_tab_focus_times_for_all_users'

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 4574d10dd84be08221d771ab34222cc4
+# md5: da347039020f28476a286b3bbf23f5fa
 # coding: utf-8
 
 from tmilib_base import *
@@ -108,6 +108,9 @@ def get_username_to_mturk_id():
   #return create_and_get('username_to_mturk_id.json', compute_username_to_mturk_id)
   return create_and_get('username_to_mturk_id.json')
 
+def precompute_username_to_mturk_id():
+  create_if_doesnt_exist('username_to_mturk_id.json')
+
 
 @memoized
 def compute_mturkid_to_history_pages_and_visits():
@@ -159,6 +162,7 @@ def get_mturkid_to_history_visits():
   return create_and_get('mturkid_to_history_visits.json')
 
 
+'''
 def compute_mturkid_to_time_last_active():
   mturkid_to_time_last_active = {}
   for logfile in list_logfiles():
@@ -171,12 +175,31 @@ def compute_mturkid_to_time_last_active():
       mturkid_to_time_last_active[mturkid] = time
       break
   return mturkid_to_time_last_active
+'''
+
+def compute_mturkid_to_time_last_active():
+  mturkid_to_time_last_active = {}
+  for user in list_users_with_log():
+    for data in iterate_logs_for_user_compressed(user):
+      if 'mturkid' not in data:
+        continue
+      mturkid = data['mturkid']
+      time = data['time']
+      if mturkid not in mturkid_to_time_last_active:
+        mturkid_to_time_last_active[mturkid] = time
+      else:
+        mturkid_to_time_last_active[mturkid] = max(time, mturkid_to_time_last_active[mturkid])
+  return mturkid_to_time_last_active
 
 def get_mturkid_to_time_last_active():
   #return create_and_get('mturkid_to_time_last_active.json', compute_mturkid_to_time_last_active)
   return create_and_get('mturkid_to_time_last_active.json')
 
+def precompute_mturkid_to_time_last_active():
+  create_if_doesnt_exist('mturkid_to_time_last_active.json')
 
+
+'''
 def compute_domains_list():
   mturkid_to_history_pages = get_mturkid_to_history_pages()
   alldomains = set()
@@ -186,10 +209,23 @@ def compute_domains_list():
       domain = url_to_domain(url)
       alldomains.add(domain)
   return list(alldomains)
+'''
+
+def compute_domains_list():
+  alldomains = set()
+  for user in list_users_with_hist():
+    for pageinfo in get_history_pages_for_user(user):
+      url = pageinfo['url']
+      domain = url_to_domain(url)
+      alldomains.add(domain)
+  return list(alldomains)
 
 def get_domains_list():
   #return create_and_get('domains_list.json', compute_domains_list)
   return create_and_get('domains_list.json')
+
+def precompute_domains_list():
+  create_if_doesnt_exist('domains_list.json')
 
 
 
@@ -286,6 +322,7 @@ def compute_history_visits_for_user(user):
   return output
 '''
 
+'''
 def compute_history_pages_for_user(user):
   max_hid = 0
   for line in iterate_hist_for_user_compressed(user):
@@ -299,6 +336,7 @@ def compute_history_pages_for_user(user):
     if evt == 'history_pages':
       data = decompress_data_lzstring_base64(line['data'])
       return data
+  return []
 
 def compute_history_visits_for_user(user):
   max_hid = 0
@@ -316,6 +354,84 @@ def compute_history_visits_for_user(user):
       for k,v in data.items():
         output[k] = v
   return output
+'''
+
+def compute_history_valid_hids_for_user(user):
+  hid_with_history_pages = set()
+  hid_to_totalparts = {}
+  hid_to_seenparts = {}
+  hid_with_complete_history_visits = set()
+  for line in iterate_hist_for_user_compressed(user):
+    hid = line['hid']
+    evt = line['evt']
+    if evt == 'history_pages':
+      hid_with_history_pages.add(hid)
+      continue
+    if evt == 'history_visits':
+      totalparts = line['totalparts']
+      idx = line['idx']
+      if totalparts < 1:
+        raise 'have totalparts value less than one of ' + str(totalparts) + ' for user ' + user
+      if hid not in hid_to_totalparts:
+        hid_to_totalparts[hid] = totalparts
+      else:
+        if hid_to_totalparts[hid] != totalparts:
+          raise 'inconsistent totalparts for user ' + user + ' on hid ' + str(hid) + ' with values ' + str(totalparts) + ' and ' + str(hid_to_totalparts[hid])
+      if hid not in hid_to_seenparts:
+        hid_to_seenparts[hid] = set()
+      hid_to_seenparts[hid].add(idx)
+      num_parts_seen_so_far = len(hid_to_seenparts[hid])
+      if num_parts_seen_so_far > totalparts:
+        raise 'num parts seen so far ' + str(num_parts_seen_so_far) + ' is greater than totalparts ' + str(totalparts) + ' for user ' + user
+      if num_parts_seen_so_far == totalparts:
+        hid_with_complete_history_visits.add(hid)        
+  output = [hid for hid in hid_with_complete_history_visits if hid in hid_with_history_pages]
+  output.sort()
+  return output
+
+def get_history_valid_hids(user):
+  return get_function_for_key(user, 'history_valid_hids_for_user')
+
+def compute_history_valid_hids_for_all_users():
+  for user in list_users_with_hist():
+    compute_function_for_key(user, 'history_valid_hids_for_user')
+
+def compute_history_valid_hids_for_all_users_randomized():
+  for user in shuffled(list_users_with_hist()):
+    compute_function_for_key(user, 'history_valid_hids_for_user')
+
+def compute_history_pages_for_user(user):
+  valid_hids = get_history_valid_hids(user)
+  if len(valid_hids) == 0:
+    return []
+  target_hid = max(valid_hids)
+  for line in iterate_hist_for_user_compressed(user):
+    hid = line['hid']
+    if hid != target_hid:
+      continue
+    evt = line['evt']
+    if evt == 'history_pages':
+      data = decompress_data_lzstring_base64(line['data'])
+      return data
+  return []
+
+def compute_history_visits_for_user(user):
+  valid_hids = get_history_valid_hids(user)
+  if len(valid_hids) == 0:
+    return {}
+  target_hid = max(valid_hids)
+  output = {}
+  for line in iterate_hist_for_user_compressed(user):
+    hid = line['hid']
+    if hid < target_hid:
+      continue
+    evt = line['evt']
+    if evt == 'history_visits':
+      data = decompress_data_lzstring_base64(line['data'])
+      for k,v in data.items():
+        output[k] = v
+  return output
+
 
 def get_history_pages_for_user(user):
   return get_function_for_key(user, 'history_pages_for_user')

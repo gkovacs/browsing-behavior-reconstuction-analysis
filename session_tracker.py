@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 48b74b1eacd3a0c7b24dcc28c6514cf7
+# md5: d807e1bea8d9d555368ee87e1984c639
 # coding: utf-8
 
 def get_focused_tab(data):
@@ -19,9 +19,10 @@ def get_focused_tab(data):
       return tab['url']
 
 class SessionTracker:
-  def __init__(self):
+  def __init__(self, **kwargs):
     self.output = []
     self.curitem = {}
+    self.store_events = kwargs.get('store_events', False)
   def get_output(self):
     self.end_input()
     return self.output
@@ -62,19 +63,41 @@ class SessionTracker:
     # have gone to different site
     self.end_session(curtime)
     self.start_session(url, curtime)
+  def record_events(self, data):
+    if self.store_events:
+      if 'events' not in self.curitem:
+        self.curitem['events'] = []
+      cloned_event = {k:v for k,v in data.items() if k != 'windows'}
+      cururl = get_focused_tab(data)
+      cloned_event['url'] = cururl
+      self.curitem['events'].append(cloned_event)
+  def record_events_again_if_new(self, data):
+    if self.store_events:
+      if 'events' not in self.curitem:
+        self.curitem['events'] = []
+        # only record again if is first one
+        cloned_event = {k:v for k,v in data.items() if k != 'windows'}
+        cururl = get_focused_tab(data)
+        cloned_event['url'] = cururl
+        cloned_event['dup'] = True
+        self.curitem['events'].append(cloned_event)
   def process_input(self, data):
     evt = data['evt']
     curtime = data['time'] # this is timestamp in milliseconds
     cururl = get_focused_tab(data)
+    self.record_events(data)
     if cururl == None: # browser is not focused
       self.end_session(curtime)
+      self.record_events_again_if_new(data)
       return
     if evt == 'idle_changed':
       self.process_idle_changed(data)
+      self.record_events_again_if_new(data)
       return
     if evt == 'still_browsing': # ignore still_browsing events
       return
     self.continue_session(cururl, curtime)
+    self.record_events_again_if_new(data)
   def process_idle_changed(self, data):
     # idlestate can be either idle, locked, or active
     idlestate = data['idlestate']

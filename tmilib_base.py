@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 4826dd76abc3d56a06ab3d490e9c0143
+# md5: 2b0a83596743ff4f9bd576ef7a06c49c
 # coding: utf-8
 
 import urlparse
@@ -60,7 +60,7 @@ def list_histfiles():
 @memoized
 def list_users():
   #return [filename_to_username(x) for x in list_logfiles()]
-  return list_users_with_log_and_mlog()
+  return list_users_with_log_and_mlog_and_hist()
 
 @memoized
 def list_users_with_hist():
@@ -79,10 +79,18 @@ def list_users_with_log_and_mlog():
   users_with_mlog_set = set(list_users_with_mlog())
   return [x for x in list_users_with_log() if x in users_with_mlog_set]
 
+@memoized
+def list_users_with_log_and_mlog_and_hist():
+  users_with_mlog_set = set(list_users_with_mlog())
+  users_with_hist_set = set(list_users_with_hist())
+  return [x for x in list_users_with_log() if x in users_with_mlog_set and x in users_with_hist_set]
+
+
 
 @memoized
 def get_sdir():
-  return get_basedir().replace('local_', 'sdir_')
+  #return get_basedir().replace('local_', 'sdir_')
+  return get_basedir().replace('tmi-data', 'tmi-sdir').replace('local_', 'sdir_')
 
 def ensure_sdir_exists():
   sdir = get_sdir()
