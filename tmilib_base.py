@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 2b0a83596743ff4f9bd576ef7a06c49c
+# md5: 4d59b9c8be8b91ec3d8d4acfa678bb27
 # coding: utf-8
 
 import urlparse
@@ -216,6 +216,14 @@ def iterate_data_compressed_reverse(filename):
   alldata.reverse()
   return alldata
 
+
+
+def print_counter(counter, **kwargs):
+  num = kwargs.get('num', 100)
+  keys_and_values = [{'key': k, 'val': v} for k,v in counter.items()]
+  keys_and_values.sort(key=itemgetter('val'), reverse=True)
+  for item in keys_and_values[:num]:
+    print item['key'], item['val']
 
 
 def url_to_domain(url):

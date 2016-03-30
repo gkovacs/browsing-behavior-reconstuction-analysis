@@ -1,10 +1,11 @@
 #!/usr/bin/env python
-# md5: 9e1792e10e7372ce813df59698c71705
+# md5: e7b3cfc857228015fe38bc504910bed5
 # coding: utf-8
 
 from tmilib import *
 
-tmi_overrides['basedir'] = '/home/gkovacs/tmi-data/local_2016-03-27_19:25:47-07:00'
+#tmi_overrides['basedir'] = '/home/gkovacs/tmi-data/local_2016-03-27_19:25:47-07:00'
+tmi_overrides['basedir'] = '/home/gkovacs/tmi-data/local_2016-03-29_00:05:42-07:00'
 
 
 '''
@@ -40,6 +41,7 @@ task_list = [
   compute_history_valid_hids_for_all_users_randomized,
   compute_history_pages_for_all_users_randomized,
   compute_history_visits_for_all_users_randomized,
+  compute_history_ordered_visits_for_all_users_randomized,
   compute_mlog_active_times_for_all_users_randomized,
   compute_tab_focus_times_for_all_users_randomized,
   compute_log_with_mlog_active_times_for_all_users_randomized,
@@ -55,6 +57,11 @@ task_list = [
 
 for fn in shuffled(task_list):
   fn()
+
+compute_reconstruct_focus_times_baseline_for_all_users_randomized()
+
+
+
 
 
 #print 'compute_tab_focus_times_for_all_users'

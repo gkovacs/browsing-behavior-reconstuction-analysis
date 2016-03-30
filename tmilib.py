@@ -1,9 +1,10 @@
 #!/usr/bin/env python
-# md5: da347039020f28476a286b3bbf23f5fa
+# md5: 93f81ff539b36407f06a8fa5b9c1b1ed
 # coding: utf-8
 
 from tmilib_base import *
-from session_tracker import SessionTracker
+from session_tracker import SessionTracker, get_focused_tab
+from reconstruct_focus_times import ReconstructFocusTimesBaseline
 
 
 
@@ -592,6 +593,49 @@ def compute_hist_timesorted_lines_for_all_users():
 def compute_hist_timesorted_lines_for_all_users_randomized():
   for user in shuffled(list_users_with_hist()):
     compute_function_for_key_lines(user, 'hist_timesorted_lines_for_user')
+
+
+def compute_reconstruct_focus_times_baseline_for_user(user):
+  # baseline algorithm = 60 seconds idle time assumed
+  reconstructor = ReconstructFocusTimesBaseline()
+  for visit in get_history_ordered_visits_for_user(user):
+    reconstructor.process_history_line(visit)
+  return reconstructor.get_output()
+
+def get_reconstruct_focus_times_baseline_for_user(user):
+  return get_function_for_key_lines(user, 'reconstruct_focus_times_baseline_for_user')
+
+def compute_reconstruct_focus_times_baseline_for_all_users():
+  for user in list_users_with_hist():
+    compute_function_for_key_lines(user, 'reconstruct_focus_times_baseline_for_user')
+
+def compute_reconstruct_focus_times_baseline_for_all_users_randomized():
+  for user in shuffled(list_users_with_hist()):
+    compute_function_for_key_lines(user, 'reconstruct_focus_times_baseline_for_user')
+
+
+def compute_url_switch_sources_for_user(user):
+  output = [] # {url, prev, evt}
+  prevurl = None
+  for data in get_log_with_mlog_active_times_for_user(user):
+    data = uncompress_data_subfields(data)
+    cururl = get_focused_tab(data)
+    evt = data['evt']
+    if cururl != prevurl:
+      output.append({'evt': evt, 'url': cururl, 'prev': prevurl})
+      prevurl = cururl
+  return output
+
+def get_url_switch_sources_for_user(user):
+  return get_function_for_key_lines(user, 'url_switch_sources_for_user')
+
+def compute_url_switch_sources_for_all_users():
+  for user in list_users_with_log_and_mlog():
+    compute_function_for_key_lines(user, 'url_switch_sources_for_user')
+
+def compute_url_switch_sources_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog()):
+    compute_function_for_key_lines(user, 'url_switch_sources_for_user')
 
 
 def iterate_mlogs_for_user(user):
