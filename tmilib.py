@@ -1,10 +1,11 @@
 #!/usr/bin/env python
-# md5: 93f81ff539b36407f06a8fa5b9c1b1ed
+# md5: 6220dde73299e310fbfe2ece4f1312e2
 # coding: utf-8
 
 from tmilib_base import *
 from session_tracker import SessionTracker, get_focused_tab
 from reconstruct_focus_times import ReconstructFocusTimesBaseline
+from jsonmemoized import *
 
 
 
@@ -40,12 +41,17 @@ def get_compute_function_from_name(name):
 
 
 
+
+
+
 def create_if_doesnt_exist(filename, function=None):
   if function == None:
     function = get_compute_function_from_name(filename)
   if sdir_exists(filename):
     return
   data = function()
+  if sdir_exists(filename):
+    return
   sdir_dumpjson(filename, data)
 
 def create_and_get(filename, function=None):
@@ -60,8 +66,10 @@ def compute_function_for_key(key, name, function=None):
   if sdir_exists(outfile):
     return
   print outfile
-  result = function(key)
   ensure_sdir_subdir_exists(name)
+  result = function(key)
+  if sdir_exists(outfile):
+    return
   sdir_dumpjson(outfile, result)
 
 def get_function_for_key(key, name, function=None):
@@ -80,6 +88,8 @@ def compute_function_for_key_lines(key, name, function=None):
   print outfile
   ensure_sdir_subdir_exists(name)
   result = function(key)
+  if sdir_exists(outfile):
+    return
   sdir_dumpjsonlines(outfile, result)  
 
 def get_function_for_key_lines(key, name, function=None):
@@ -91,6 +101,7 @@ def get_function_for_key_lines(key, name, function=None):
 
 
 
+'''
 def compute_username_to_mturk_id():
   username_to_mturk_id = {}
   #for filename in (list_logfiles() + list_mlogfiles()):
@@ -104,6 +115,17 @@ def compute_username_to_mturk_id():
     mturkid = last_item['mturkid']
     username_to_mturk_id[user] = mturkid
   return username_to_mturk_id
+'''
+
+def compute_username_to_mturk_id():
+  output = {}
+  for user in list_users_with_log():
+    for line in iterate_logs_for_user_compressed(user):
+      if 'mturkid' in line:
+        mturkid = line['mturkid']
+        output[user] = mturkid
+        break
+  return output
 
 def get_username_to_mturk_id():
   #return create_and_get('username_to_mturk_id.json', compute_username_to_mturk_id)
@@ -284,6 +306,124 @@ def compute_tab_focus_times_for_all_users_randomized():
     compute_function_for_key(user, 'tab_focus_times_for_user')
 
 #compute_tab_focus_times_for_all_users()
+
+
+def compute_tab_focus_times_only_tab_updated_for_user(user):
+  current_session_tracker = SessionTracker()
+  for line in get_log_with_mlog_active_times_for_user(user):
+    if line['evt'] != 'tab_updated':
+      continue
+    current_session_tracker.process_input(uncompress_data_subfields(line))
+  current_session_tracker.end_input()
+  return current_session_tracker.get_output()
+
+def get_tab_focus_times_only_tab_updated_for_user(user):
+  return get_function_for_key(user, 'tab_focus_times_only_tab_updated_for_user')
+
+def compute_tab_focus_times_only_tab_updated_for_all_users():
+  for user in list_users_with_log_and_mlog():
+    #filesize = path.getsize(filename)
+    #filesize_megabytes = filesize / (1000.0*1000.0)
+    #if filesize_megabytes > 0.1:
+    #  continue
+    compute_function_for_key(user, 'tab_focus_times_only_tab_updated_for_user')
+
+def compute_tab_focus_times_only_tab_updated_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog()):
+    compute_function_for_key(user, 'tab_focus_times_only_tab_updated_for_user')
+
+
+def compute_tab_focus_times_only_tab_updated_urlchanged_for_user(user):
+  current_session_tracker = SessionTracker()
+  prev_url = None
+  for line in get_log_with_mlog_active_times_for_user(user):
+    if line['evt'] != 'tab_updated':
+      continue
+    url = line['tab']['url']
+    if url == prev_url:
+      continue
+    prev_url = url
+    current_session_tracker.process_input(uncompress_data_subfields(line))
+  current_session_tracker.end_input()
+  return current_session_tracker.get_output()
+
+def get_tab_focus_times_only_tab_updated_urlchanged_for_user(user):
+  return get_function_for_key(user, 'tab_focus_times_only_tab_updated_urlchanged_for_user')
+
+def compute_tab_focus_times_only_tab_updated_urlchanged_for_all_users():
+  for user in list_users_with_log_and_mlog():
+    compute_function_for_key(user, 'tab_focus_times_only_tab_updated_urlchanged_for_user')
+
+def compute_tab_focus_times_only_tab_updated_urlchanged_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog()):
+    compute_function_for_key(user, 'tab_focus_times_only_tab_updated_urlchanged_for_user')
+
+
+def compute_idealized_history_from_logs_for_user(user):
+  output = []
+  for line in get_log_with_mlog_active_times_for_user(user):
+    if line['evt'] != 'tab_updated':
+      continue
+    url = line['tab']['url']
+    time = line['time']
+    output.append({'url': url, 'visitTime': time, 'transition': 'link'})
+  return output
+
+def get_idealized_history_from_logs_for_user(user):
+  return get_function_for_key(user, 'idealized_history_from_logs_for_user')
+
+def compute_idealized_history_from_logs_for_all_users():
+  for user in list_users_with_log_and_mlog():
+    compute_function_for_key(user, 'idealized_history_from_logs_for_user')
+
+def compute_idealized_history_from_logs_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog()):
+    compute_function_for_key(user, 'idealized_history_from_logs_for_user')
+
+
+def compute_url_to_tab_focus_times_for_user(user):
+  tab_focus_times = get_tab_focus_times_for_user(user)
+  output = {}
+  for visit in tab_focus_times:
+    url = visit['url']
+    if url not in output:
+      output[url] = []
+    output[url].append(visit)
+  return output
+
+def get_url_to_tab_focus_times_for_user(user):
+  return get_function_for_key(user, 'url_to_tab_focus_times_for_user')
+
+def compute_url_to_tab_focus_times_for_all_users():
+  for user in list_users_with_log_and_mlog():
+    compute_function_for_key(user, 'url_to_tab_focus_times_for_user')
+
+def compute_url_to_tab_focus_times_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog()):
+    compute_function_for_key(user, 'url_to_tab_focus_times_for_user')
+
+
+def compute_domain_to_tab_focus_times_for_user(user):
+  tab_focus_times = get_tab_focus_times_for_user(user)
+  output = {}
+  for visit in tab_focus_times:
+    url = visit['url']
+    domain = url_to_domain(url)
+    if domain not in output:
+      output[domain] = []
+    output[domain].append(visit)
+  return output
+
+def get_domain_to_tab_focus_times_for_user(user):
+  return get_function_for_key(user, 'domain_to_tab_focus_times_for_user')
+
+def compute_domain_to_tab_focus_times_for_all_users():
+  for user in list_users_with_log_and_mlog():
+    compute_function_for_key(user, 'domain_to_tab_focus_times_for_user')
+
+def compute_domain_to_tab_focus_times_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog()):
+    compute_function_for_key(user, 'domain_to_tab_focus_times_for_user')
 
 
 '''

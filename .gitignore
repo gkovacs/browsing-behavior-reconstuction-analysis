@@ -2,3 +2,4 @@ oldjson
 .ipynb_checkpoints
 *.pyc
 .getsecret.yaml
+*.json
