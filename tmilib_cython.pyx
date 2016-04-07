@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 4bad6dda6d99919c42d1df2ff956999f
+# md5: 090a0b796d670d32c3e60a3b3f6e6e4b
 # coding: utf-8
 
 import numpy
@@ -7,8 +7,9 @@ cimport numpy
 import tmilib
 
 
-def dataset_to_feature_vectors(dataset, enabled_feat=None):
-  cdef long[:] topdomains = numpy.array([tmilib.domain_to_id(x) for x in tmilib.top_n_domains_by_visits(20)], dtype=int)
+float[:,:] def dataset_to_feature_vectors(float[:,:] dataset, enabled_feat=None):
+  #cdef float[:,:] dataset = dataset_gen.asarray(dataset_gen, dtype=float)
+  cdef long[:] topdomains = numpy.asarray([tmilib.domain_to_id(x) for x in tmilib.top_n_domains_by_visits(20)], dtype=int)
   cdef long num_topdomains = len(topdomains)
   cdef long[:] domain_id_to_productivity = numpy.array(tmilib.get_domain_id_to_productivity(), dtype=numpy.int64)
   cdef long[:] rescuetime_productivity_levels = numpy.array(tmilib.get_rescuetime_productivity_levels(), dtype=int)
@@ -22,7 +23,7 @@ def dataset_to_feature_vectors(dataset, enabled_feat=None):
   else:
     enabled_features = numpy.array(enabled_feat, dtype=int)
   #cdef list output = [[0]*num_features for x in range(len(dataset['sinceprev']))]
-  cdef float[:,:] output = numpy.zeros((len(dataset['sinceprev']), num_features), dtype=float)
+  cdef float[:,:] output = numpy.zeros((len(dataset), num_features), dtype=float)
   #cdef list output = []
   #output = numpy.zeros((len(dataset['sinceprev']), num_features), dtype=object) # object instead of float, so we can have floats and ints
   #for idx,sinceprev,tonext,fromdomain,todomain in zipkeys_idx(dataset, 'sinceprev', 'tonext', 'fromdomain', 'todomain'):
@@ -31,11 +32,18 @@ def dataset_to_feature_vectors(dataset, enabled_feat=None):
   cdef long label, fromdomain, todomain
   cdef float sinceprev, tonext
   cdef long productivity_idx, productivity, domain_idx, domain
-  cdef long output_idx = 0
+  cdef long output_idx
   cdef long cur_idx = 0
-  for label,sinceprev,tonext,fromdomain,todomain in dataset:
+  cdef long dataset_len = len(dataset)
+  #for label,sinceprev,tonext,fromdomain,todomain in dataset:
+  for output_idx in range(dataset_len):
+    label = dataset[output_idx, 0]
+    sinceprev = dataset[output_idx, 1]
+    tonext = dataset[output_idx, 2]
+    fromdomain = dataset[output_idx, 3]
+    todomain = dataset[output_idx, 4]
     #cur = output[output_idx]
-    output_idx += 1
+    #output_idx += 1
     cur_idx = 0
     if enabled_features[0]:
       output[output_idx,cur_idx] = sinceprev
