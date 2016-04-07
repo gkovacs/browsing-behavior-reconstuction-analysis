@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 225e19eac8ef40086b26ef943dc65477
+# md5: 4bad6dda6d99919c42d1df2ff956999f
 # coding: utf-8
 
 import numpy
@@ -22,7 +22,7 @@ def dataset_to_feature_vectors(dataset, enabled_feat=None):
   else:
     enabled_features = numpy.array(enabled_feat, dtype=int)
   #cdef list output = [[0]*num_features for x in range(len(dataset['sinceprev']))]
-  cdef float[:,:] output = numpy.zeros((len(dataset['sinceprev']), num_features), dtype=int)
+  cdef float[:,:] output = numpy.zeros((len(dataset['sinceprev']), num_features), dtype=float)
   #cdef list output = []
   #output = numpy.zeros((len(dataset['sinceprev']), num_features), dtype=object) # object instead of float, so we can have floats and ints
   #for idx,sinceprev,tonext,fromdomain,todomain in zipkeys_idx(dataset, 'sinceprev', 'tonext', 'fromdomain', 'todomain'):
