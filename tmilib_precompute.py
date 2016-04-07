@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 6931f12bdc51c18d4e9b0c69ab35d60c
+# md5: 310d18404d95d704950bef05b046e216
 # coding: utf-8
 
 from tmilib import *
@@ -7,7 +7,9 @@ from tmilib import *
 #tmi_overrides['basedir'] = '/home/gkovacs/tmi-data/local_2016-03-27_19:25:47-07:00'
 #tmi_overrides['basedir'] = '/home/gkovacs/tmi-data/local_2016-03-29_00:05:42-07:00'
 #tmi_overrides['basedir'] = '/home/gkovacs/tmi-data/local_2016-03-29_14:32:48-07:00'
-tmi_overrides['basedir'] = '/home/gkovacs/tmi-data/local_2016-03-30_16:39:38-07:00'
+#tmi_overrides['basedir'] = '/home/gkovacs/tmi-data/local_2016-03-30_16:39:38-07:00'
+#tmi_overrides['basedir'] = '/home/gkovacs/tmi-data/local_2016-04-03_01:58:55-07:00'
+tmi_overrides['basedir'] = '/home/gkovacs/tmi-data/local_2016-04-06_03:43:54-07:00'
 
 
 '''
@@ -68,6 +70,8 @@ task_list = [
   compute_tab_focus_times_only_tab_updated_for_all_users_randomized, # depends on log_with_mlog_active_times
   compute_tab_focus_times_only_tab_updated_urlchanged_for_all_users_randomized, # depends on log_with_mlog_active_times
   compute_idealized_history_from_logs_for_all_users_randomized, # depends on log_with_mlog_active_times
+  compute_idealized_history_from_logs_urlchanged_for_all_users_randomized, # depends on log_with_mlog_active_times
+  compute_domain_to_num_history_visits_for_all_users_randomized, # depends on history_visits
 ]
 
 for fn in shuffled(task_list):
@@ -79,7 +83,32 @@ task_list = [
   precompute_username_to_mturk_id,
   compute_domain_to_tab_focus_times_for_all_users_randomized, # depends on tab_focus_times
   compute_url_to_tab_focus_times_for_all_users_randomized, # depends on tab_focus_times
+  compute_active_seconds_for_all_users_randomized, # depends on tab_focus_times
   compute_reconstruct_focus_times_baseline_for_all_users_randomized, # depends on history_ordered_visits
+  compute_history_visit_times_for_all_users_randomized, # depends on history_ordered_visits
+]
+
+for fn in shuffled(task_list):
+  fn()
+
+task_list = [
+  compute_windows_at_time_for_all_users_randomized, # depends on history_visit_times
+  precompute_domains_to_id, # depends on domains_list
+  compute_domain_to_time_spent_for_all_users_randomized, # depends on domain_to_tab_focus_times
+]
+
+for fn in shuffled(task_list):
+  fn()
+
+task_list = [
+  compute_allurls_at_time_for_all_users_randomized, # depends on windows_at_time
+]
+
+for fn in shuffled(task_list):
+  fn()
+
+task_list = [
+  compute_alldomains_at_time_for_all_users_randomized, # depends on allurls_at_time
 ]
 
 for fn in shuffled(task_list):

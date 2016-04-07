@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 4d59b9c8be8b91ec3d8d4acfa678bb27
+# md5: 1d1688edb2a383124cae2934cbcdfd16
 # coding: utf-8
 
 import urlparse
@@ -27,6 +27,10 @@ import datetime
 import random
 from operator import itemgetter
 import heapq
+import itertools
+
+from sorted_collection import SortedCollection
+from math import log
 
 
 
@@ -73,6 +77,11 @@ def list_users_with_mlog():
 @memoized
 def list_users_with_log():
   return [filename_to_username(x) for x in list_logfiles()]
+
+@memoized
+def list_users_with_log_and_hist():
+  users_with_hist_set = set(list_users_with_hist())
+  return [x for x in list_users_with_log() if x in users_with_hist_set]
 
 @memoized
 def list_users_with_log_and_mlog():
@@ -220,7 +229,7 @@ def iterate_data_compressed_reverse(filename):
 
 def print_counter(counter, **kwargs):
   num = kwargs.get('num', 100)
-  keys_and_values = [{'key': k, 'val': v} for k,v in counter.items()]
+  keys_and_values = [{'key': k, 'val': v} for k,v in counter.viewitems()]
   keys_and_values.sort(key=itemgetter('val'), reverse=True)
   for item in keys_and_values[:num]:
     print item['key'], item['val']
@@ -234,6 +243,24 @@ def shuffled(l):
   l = l[:]
   random.shuffle(l)
   return l
+
+
+def zipkeys(data, *args):
+  return zip(*(data[x] for x in args))
+
+def zipkeys_idx(data, *args):
+  return zip(itertools.count(), *(data[x] for x in args))
+
+
+
+
+
+def sum_values_in_list_of_dict(list_of_dict):
+  output = Counter()
+  for d in list_of_dict:
+    for k,v in d.viewitems():
+      output[k] += v
+  return output
 
 
 def orderedMerge(*iterables, **kwargs):

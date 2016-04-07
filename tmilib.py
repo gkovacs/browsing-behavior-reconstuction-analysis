@@ -1,11 +1,18 @@
 #!/usr/bin/env python
-# md5: 6220dde73299e310fbfe2ece4f1312e2
+# md5: 8908e6ab16a62338ba1f227494688285
 # coding: utf-8
 
 from tmilib_base import *
 from session_tracker import SessionTracker, get_focused_tab
 from reconstruct_focus_times import ReconstructFocusTimesBaseline
+from reconstruct_focus_times_base import *
 from jsonmemoized import *
+from msgpackmemoized import *
+#from bloscmemoized import *
+
+from rescuetime_utils import *
+
+from tmilib_cython import dataset_to_feature_vectors
 
 
 
@@ -166,7 +173,7 @@ def compute_mturkid_to_history_pages_and_visits():
       if evt == 'history_pages':
         mturkid_to_history_pages[mturkid] = data
       if evt == 'history_visits':
-        for k,v in data.items():
+        for k,v in data.viewitems():
           mturkid_to_history_visits[mturkid][k] = v
   return mturkid_to_history_pages,mturkid_to_history_visits
 
@@ -241,10 +248,22 @@ def compute_domains_list():
       url = pageinfo['url']
       domain = url_to_domain(url)
       alldomains.add(domain)
+    # this part is technically redundant but seems things slip through?
+    for url in get_history_visits_for_user(user).viewkeys(): 
+      domain = url_to_domain(url)
+      alldomains.add(domain)
+  for user in list_users_with_log_and_mlog():
+    for visit in get_tab_focus_times_for_user(user):
+      domain = url_to_domain(visit['url'])
+      alldomains.add(domain)
   return list(alldomains)
 
 def get_domains_list():
   #return create_and_get('domains_list.json', compute_domains_list)
+  return create_and_get('domains_list.json')
+
+@memoized
+def get_domains_list_memoized():
   return create_and_get('domains_list.json')
 
 def precompute_domains_list():
@@ -252,6 +271,30 @@ def precompute_domains_list():
 
 
 
+
+
+def compute_domains_to_id():
+  output = {}
+  for idx,domain in enumerate(get_domains_list()):
+    output[domain] = idx
+  return output
+
+def get_domains_to_id():
+  return create_and_get('domains_to_id.json')
+
+@memoized
+def get_domains_to_id_memoized():
+  return create_and_get('domains_to_id.json')
+
+def precompute_domains_to_id():
+  create_if_doesnt_exist('domains_to_id.json')
+
+
+def id_to_domain(domain_id):
+  return get_domains_list_memoized()[domain_id]
+
+def domain_to_id(domain):
+  return get_domains_to_id_memoized()[domain]
 
 
 '''
@@ -295,17 +338,38 @@ def get_tab_focus_times_for_user(user):
 
 def compute_tab_focus_times_for_all_users():
   for user in list_users_with_log_and_mlog():
-    #filesize = path.getsize(filename)
-    #filesize_megabytes = filesize / (1000.0*1000.0)
-    #if filesize_megabytes > 0.1:
-    #  continue
     compute_function_for_key(user, 'tab_focus_times_for_user')
 
 def compute_tab_focus_times_for_all_users_randomized():
   for user in shuffled(list_users_with_log_and_mlog()):
     compute_function_for_key(user, 'tab_focus_times_for_user')
 
-#compute_tab_focus_times_for_all_users()
+
+def compute_active_seconds_for_user(user):
+  # this is in unix SECONDS timestamp, not in milliseconds!
+  output = []
+  last_output = None
+  for item in get_tab_focus_times_for_user(user):
+    start_seconds = int(round(item['start']/1000.0))
+    end_seconds = int(round(item['end']/1000.0))
+    for timestep in xrange(start_seconds, end_seconds+1):
+      if timestep > last_output:
+        last_output = timestep
+        output.append(timestep)
+  return output
+
+def get_active_seconds_for_user(user):
+  # will probably want to convert this into a set after returning
+  # this is in unix SECONDS timestamp, not in milliseconds!
+  return get_function_for_key(user, 'active_seconds_for_user')
+
+def compute_active_seconds_for_all_users():
+  for user in list_users_with_log_and_mlog():
+    compute_function_for_key(user, 'active_seconds_for_user')
+
+def compute_active_seconds_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog()):
+    compute_function_for_key(user, 'active_seconds_for_user')
 
 
 def compute_tab_focus_times_only_tab_updated_for_user(user):
@@ -381,6 +445,31 @@ def compute_idealized_history_from_logs_for_all_users_randomized():
     compute_function_for_key(user, 'idealized_history_from_logs_for_user')
 
 
+def compute_idealized_history_from_logs_urlchanged_for_user(user):
+  output = []
+  prev_url = None
+  for line in get_log_with_mlog_active_times_for_user(user):
+    if line['evt'] != 'tab_updated':
+      continue
+    url = line['tab']['url']
+    if url != prev_url:
+      prev_url = url
+      time = line['time']
+      output.append({'url': url, 'visitTime': time, 'transition': 'link'})
+  return output
+
+def get_idealized_history_from_logs_urlchanged_for_user(user):
+  return get_function_for_key(user, 'idealized_history_from_logs_urlchanged_for_user')
+
+def compute_idealized_history_from_logs_urlchanged_for_all_users():
+  for user in list_users_with_log_and_mlog():
+    compute_function_for_key(user, 'idealized_history_from_logs_urlchanged_for_user')
+
+def compute_idealized_history_from_logs_urlchanged_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog()):
+    compute_function_for_key(user, 'idealized_history_from_logs_urlchanged_for_user')
+
+
 def compute_url_to_tab_focus_times_for_user(user):
   tab_focus_times = get_tab_focus_times_for_user(user)
   output = {}
@@ -424,6 +513,53 @@ def compute_domain_to_tab_focus_times_for_all_users():
 def compute_domain_to_tab_focus_times_for_all_users_randomized():
   for user in shuffled(list_users_with_log_and_mlog()):
     compute_function_for_key(user, 'domain_to_tab_focus_times_for_user')
+
+
+def compute_domain_to_time_spent_for_user(user):
+  output = {}
+  for domain,tab_focus_times in get_domain_to_tab_focus_times_for_user(user).viewitems():
+    time_spent = 0
+    for item in tab_focus_times:
+      start = item['start']
+      end = item['end']
+      if start >= end:
+        continue
+      time_spent += end - start
+    output[domain] = time_spent
+  return output
+
+def get_domain_to_time_spent_for_user(user):
+  return get_function_for_key(user, 'domain_to_time_spent_for_user')
+
+def compute_domain_to_time_spent_for_all_users():
+  for user in list_users_with_log_and_mlog():
+    compute_function_for_key(user, 'domain_to_time_spent_for_user')
+
+def compute_domain_to_time_spent_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog()):
+    compute_function_for_key(user, 'domain_to_time_spent_for_user')
+
+
+def compute_domain_to_num_history_visits_for_user(user):
+  output = Counter()
+  for url,visits in get_history_visits_for_user(user).viewitems():
+    domain = url_to_domain(url)
+    output[domain] += len(visits)
+  return output
+
+def get_domain_to_num_history_visits_for_user(user):
+  return get_function_for_key(user, 'domain_to_num_history_visits_for_user')
+
+def compute_domain_to_num_history_visits_for_all_users():
+  for user in list_users_with_hist():
+    compute_function_for_key(user, 'domain_to_num_history_visits_for_user')
+
+def compute_domain_to_num_history_visits_for_all_users_randomized():
+  for user in shuffled(list_users_with_hist()):
+    compute_function_for_key(user, 'domain_to_num_history_visits_for_user')
+
+
+
 
 
 '''
@@ -569,7 +705,7 @@ def compute_history_visits_for_user(user):
     evt = line['evt']
     if evt == 'history_visits':
       data = decompress_data_lzstring_base64(line['data'])
-      for k,v in data.items():
+      for k,v in data.viewitems():
         output[k] = v
   return output
 
@@ -602,7 +738,7 @@ def compute_history_visits_for_all_users_randomized():
 def compute_history_ordered_visits_for_user(user):
   url_to_visits = get_history_visits_for_user(user)
   ordered_visits = []
-  for url,visits in url_to_visits.items():
+  for url,visits in url_to_visits.viewitems():
     for visit in visits:
       visit['url'] = url
     ordered_visits.extend(visits)
@@ -657,6 +793,97 @@ def compute_mlog_active_times_for_all_users_randomized():
 
 #print compute_mlog_active_times_for_user('ZDMgTG3hUx')
 #compute_function_for_key('ZDMgTG3hUx', 'mlog_active_times_for_user')
+
+
+def compute_history_visit_times_for_user(user):
+  output = set()
+  for visit in get_history_ordered_visits_for_user(user):
+    output.add(visit['visitTime'])
+  return sorted(list(output))
+
+def get_history_visit_times_for_user(user):
+  return get_function_for_key(user, 'history_visit_times_for_user')
+
+def compute_history_visit_times_for_all_users():
+  for user in list_users_with_hist():
+    compute_function_for_key(user, 'history_visit_times_for_user')
+
+def compute_history_visit_times_for_all_users_randomized():
+  for user in shuffled(list_users_with_hist()):
+    compute_function_for_key(user, 'history_visit_times_for_user')
+
+
+def compute_windows_at_time_for_user(user):
+  output = {}
+  history_visit_times = get_history_visit_times_for_user(user)
+  hidx = 0
+  for line in iterate_logs_for_user(user):
+    curtime = line['time']
+    windows = line['windows']
+    while hidx < len(history_visit_times): # still have visit times that need to be labeled
+      next_history_visit_time = history_visit_times[hidx]
+      if curtime < next_history_visit_time:
+        break
+      else: # next_history_visit_time <= curtime
+        output[curtime] = windows
+        hidx += 1
+  return output
+
+def get_windows_at_time_for_user(user):
+  return get_function_for_key(user, 'windows_at_time_for_user')
+
+def compute_windows_at_time_for_all_users():
+  for user in list_users_with_log_and_hist():
+    compute_function_for_key(user, 'windows_at_time_for_user')
+
+def compute_windows_at_time_for_all_users_randomized():
+  for user in shuffled(list_users_with_hist()):
+    compute_function_for_key(user, 'windows_at_time_for_user')
+
+
+
+def compute_allurls_at_time_for_user(user):
+  output = {}
+  for time,windows in get_windows_at_time_for_user(user).viewitems():
+    output[time] = []
+    for window in windows:
+      for tab in window['tabs']:
+        url = tab['url']
+        output[time].append(url)
+  return output
+
+def get_allurls_at_time_for_user(user):
+  return get_function_for_key(user, 'allurls_at_time_for_user')
+
+def compute_allurls_at_time_for_all_users():
+  for user in list_users_with_log_and_hist():
+    compute_function_for_key(user, 'allurls_at_time_for_user')
+
+def compute_allurls_at_time_for_all_users_randomized():
+  for user in shuffled(list_users_with_hist()):
+    compute_function_for_key(user, 'allurls_at_time_for_user')
+
+  
+
+
+def compute_alldomains_at_time_for_user(user):
+  output = {}
+  for time,urls in get_allurls_at_time_for_user(user).viewitems():
+    output[time] = [url_to_domain(url) for url in urls]
+  return output
+
+def get_alldomains_at_time_for_user(user):
+  return get_function_for_key(user, 'alldomains_at_time_for_user')
+
+def compute_alldomains_at_time_for_all_users():
+  for user in list_users_with_log_and_hist():
+    compute_function_for_key(user, 'alldomains_at_time_for_user')
+
+def compute_alldomains_at_time_for_all_users_randomized():
+  for user in shuffled(list_users_with_hist()):
+    compute_function_for_key(user, 'alldomains_at_time_for_user')
+
+  
 
 
 def compute_log_with_mlog_active_times_for_user(user):
@@ -778,6 +1005,257 @@ def compute_url_switch_sources_for_all_users_randomized():
     compute_function_for_key_lines(user, 'url_switch_sources_for_user')
 
 
+def extract_secondlevel_activespan_dataset_for_user(user, only_tenseconds=False):
+  ordered_visits = get_history_ordered_visits_for_user(user)
+  ordered_visits = exclude_bad_visits(ordered_visits)
+  ordered_visits_len = len(ordered_visits)
+  tab_focus_times = get_tab_focus_times_for_user(user)
+  if len(tab_focus_times) == 0:
+    return
+  if len(ordered_visits) == 0:
+    return
+  active_seconds_set = set(get_active_seconds_for_user(user))
+  ref_start_time = max(get_earliest_start_time(tab_focus_times), get_earliest_start_time(ordered_visits))
+  ref_end_time = min(get_last_end_time(tab_focus_times), get_last_end_time(ordered_visits))
+  ref_start_time = max(ref_start_time, 1458371950000) # march 19th. may have had some data loss prior to that
+  ref_end_time = max(ref_end_time, 1458371950000)
+  ref_start_time_seconds = ref_start_time/1000.0
+  ref_end_time_seconds = ref_end_time/1000.0
+  tab_focus_times_sortedcollection = SortedCollection(tab_focus_times, key=itemgetter('start'))
+  for idx,visit in enumerate(ordered_visits):
+    if idx+1 == ordered_visits_len: # last visit, we probably should reconstruct this TODO
+      continue
+    next_visit = ordered_visits[idx + 1]
+    visit_time_seconds = int(round(visit['visitTime']/1000.0))
+    next_visit_time_seconds = int(round(next_visit['visitTime']/1000.0))
+    if visit_time_seconds < ref_start_time_seconds:
+      continue
+    if next_visit_time_seconds > ref_end_time_seconds:
+      continue
+    if visit_time_seconds >= next_visit_time_seconds:
+      continue
+    from_domain_id = domain_to_id(url_to_domain(visit['url']))
+    to_domain_id = domain_to_id(url_to_domain(next_visit['url']))
+    # we actually want to do this per second, not per millisecond! so want to actually round to nearest 1000 milliseconds
+    for timestep in xrange(visit_time_seconds, next_visit_time_seconds+1):
+      if not visit_time_seconds < timestep < next_visit_time_seconds:
+        continue
+      if only_tenseconds:
+        if timestep % 10 != 0:
+          continue
+      sinceprev = timestep - visit_time_seconds
+      tonext = next_visit_time_seconds - timestep
+      label = int((sinceprev <= 60) or (timestep in active_seconds_set))
+      yield [label, log(sinceprev), log(tonext), from_domain_id, to_domain_id]
+
+def compute_secondlevel_activespan_dataset_for_user(user):
+  return extract_secondlevel_activespan_dataset_for_user(user, False)
+
+def get_secondlevel_activespan_dataset_for_user(user):
+  return get_function_for_key_lines(user, 'secondlevel_activespan_dataset_for_user')
+
+def compute_secondlevel_activespan_dataset_for_all_users():
+  for user in list_users_with_log_and_mlog_and_hist():
+    compute_function_for_key_lines(user, 'secondlevel_activespan_dataset_for_user')
+
+def compute_secondlevel_activespan_dataset_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key_lines(user, 'secondlevel_activespan_dataset_for_user')
+
+
+def compute_tensecondlevel_activespan_dataset_for_user(user):
+  return extract_secondlevel_activespan_dataset_for_user(user, True) # not a typo. it handles both
+
+def get_tensecondlevel_activespan_dataset_for_user(user):
+  return get_function_for_key_lines(user, 'tensecondlevel_activespan_dataset_for_user')
+
+def compute_tensecondlevel_activespan_dataset_for_all_users():
+  for user in list_users_with_log_and_mlog_and_hist():
+    compute_function_for_key_lines(user, 'tensecondlevel_activespan_dataset_for_user')
+
+def compute_tensecondlevel_activespan_dataset_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key_lines(user, 'tensecondlevel_activespan_dataset_for_user')
+
+
+def compute_tensecondlevel_activespan_dataset_labels_for_user(user):
+  for line in get_tensecondlevel_activespan_dataset_for_user(user):
+    yield line[0]
+
+def get_tensecondlevel_activespan_labels_for_user(user):
+  return get_function_for_key(user, 'tensecondlevel_activespan_dataset_labels_for_user')
+
+def compute_tensecondlevel_activespan_dataset_labels_for_all_users():
+  for user in list_users_with_log_and_mlog_and_hist():
+    compute_function_for_key(user, 'tensecondlevel_activespan_dataset_labels_for_user')
+
+def compute_tensecondlevel_activespan_dataset_labels_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key(user, 'tensecondlevel_activespan_dataset_labels_for_user')
+
+
+
+
+
+def compute_secondlevel_activespan_dataset_labels_for_user(user):
+  for line in get_secondlevel_activespan_dataset_for_user(user):
+    yield line[0]
+
+def get_secondlevel_activespan_labels_for_user(user):
+  return get_function_for_key(user, 'secondlevel_activespan_dataset_labels_for_user')
+
+def compute_secondlevel_activespan_dataset_labels_for_all_users():
+  for user in list_users_with_log_and_mlog_and_hist():
+    compute_function_for_key(user, 'secondlevel_activespan_dataset_labels_for_user')
+
+def compute_secondlevel_activespan_dataset_labels_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key(user, 'secondlevel_activespan_dataset_labels_for_user')
+
+
+@memoized
+def total_visits_of_domains_in_training():
+  return sum_values_in_list_of_dict([get_domain_to_num_history_visits_for_user(user)for user in get_training_users()])
+
+@memoized
+def top_n_domains_by_visits(n=10):
+  domain_to_usage = total_visits_of_domains_in_training()
+  return [x[0] for x in sorted(domain_to_usage.items(), key=itemgetter(1), reverse=True)[:n]]
+
+
+
+
+
+
+
+
+def get_users_with_data():
+  users_with_data = []
+  for user in list_users():
+    ordered_visits = get_history_ordered_visits_for_user(user)
+    if len(ordered_visits) == 0:
+      continue
+    tab_focus_times = get_tab_focus_times_for_user(user)
+    if len(tab_focus_times) == 0:
+      continue
+    first_visit = tab_focus_times[0]
+    first_visit_time = first_visit['start']
+    first_visit_time = max(first_visit_time, ordered_visits[0]['visitTime']) / 1000.0
+    last_visit = ordered_visits[-1]
+    last_visit_time = float(last_visit['visitTime'])
+    last_visit_time = min(last_visit_time, tab_focus_times[-1]) / 1000.0
+    time_spent = last_visit_time - first_visit_time # seconds
+    #print user, time_spent/(3600.0*24)
+    if time_spent/(3600.0*24) > 10: # have at least 10 days of data
+      users_with_data.append(user)
+    #print user, datetime.datetime.fromtimestamp(last_visit_time)
+  return users_with_data
+
+
+@memoized
+def get_training_and_test_users():
+  all_available_users = get_users_with_data()
+  half_of_all = len(all_available_users) / 2
+  training_users = random.sample(all_available_users, half_of_all)
+  training_users_set = set(training_users)
+  test_users = [x for x in all_available_users if x not in training_users_set]
+  return training_users,test_users
+
+@jsonmemoized
+def get_training_users():
+  return get_training_and_test_users()[0]
+
+@jsonmemoized
+def get_test_users():
+  return get_training_and_test_users()[1]
+
+
+def get_tensecondlevel_activespan_dataset_train():
+  for user in get_training_users():
+    for x in get_tensecondlevel_activespan_dataset_for_user(user):
+      yield x
+
+def get_tensecondlevel_activespan_dataset_test():
+  for user in get_test_users():
+    for x in get_tensecondlevel_activespan_dataset_for_user(user):
+      yield x
+
+
+def compute_labels_for_tensecondlevel_train():
+  for user in get_training_users():
+    for x in get_tensecondlevel_activespan_labels_for_user(user):
+      yield x
+
+def get_labels_for_tensecondlevel_train():
+  return create_and_get('labels_for_tensecondlevel_train.json')
+
+def precompute_labels_for_tensecondlevel_train():
+  return create_if_doesnt_exist('labels_for_tensecondlevel_train.json')
+
+def compute_labels_for_tensecondlevel_test():
+  for user in get_test_users():
+    for x in get_tensecondlevel_activespan_labels_for_user(user):
+      yield x
+
+def get_labels_for_tensecondlevel_test():
+  return create_and_get('labels_for_tensecondlevel_test.json')
+
+def precompute_labels_for_tensecondlevel_test():
+  return create_if_doesnt_exist('labels_for_tensecondlevel_test.json')
+
+
+def compute_feature_vector_for_tensecondlevel_train(enabled_features):
+  return dataset_to_feature_vectors(get_tensecondlevel_activespan_dataset_train(), enabled_features)
+
+def get_feature_vector_for_tensecondlevel_train(enabled_features):
+  return get_function_for_key(enabled_features, 'feature_vector_for_tensecondlevel_train')
+
+
+def compute_feature_vector_for_tensecondlevel_test(enabled_features):
+  return dataset_to_feature_vectors(get_tensecondlevel_activespan_dataset_test(), enabled_features)
+
+def get_feature_vector_for_tensecondlevel_test(enabled_features):
+  return get_function_for_key(enabled_features, 'feature_vector_for_tensecondlevel_test')
+
+
+def compute_domain_id_to_productivity():
+  max_domain_id = max(get_domains_to_id().viewvalues())
+  output = [0 for i in xrange(max_domain_id+1)]
+  for domain,productivity in get_domain_to_productivity().viewitems():
+    try:
+      domain_id = domain_to_id(domain)
+    except:
+      continue
+    output[domain_id] = productivity
+  return output
+
+def get_domain_id_to_productivity():
+  return create_and_get('domain_id_to_productivity.json')
+
+def precompute_domain_id_to_productivity():
+  return create_if_doesnt_exist('domain_id_to_productivity.json')
+
+def compute_domain_id_to_category():
+  max_domain_id = max(get_domains_to_id().viewvalues())
+  output = ['' for i in xrange(max_domain_id+1)]
+  for domain,category in get_domain_to_category().viewitems():
+    try:
+      domain_id = domain_to_id(domain)
+    except:
+      continue
+    output[domain_id] = category
+  return output
+
+def get_domain_id_to_category():
+  return create_and_get('domain_id_to_category.json')
+
+def precompute_domain_id_to_category():
+  return create_if_doesnt_exist('domain_id_to_category.json')
+
+
+
+
+
 def iterate_mlogs_for_user(user):
   for line in get_mlog_timesorted_lines_for_user(user):
     yield uncompress_data_subfields(line)
@@ -798,4 +1276,7 @@ def iterate_hist_for_user(user):
 
 def iterate_hist_for_user_compressed(user):
   return get_hist_timesorted_lines_for_user(user)
+
+
+
 

@@ -1,48 +1,21 @@
 #!/usr/bin/env python
-# md5: f585c2d66b2e51e433ab1ad9e4a8b2d9
+# md5: 3d6a10d4bbdf1c6449aeff0d062e52c9
 # coding: utf-8
 
 from tmilib import *
+from reconstruct_focus_times_base import *
 
 
-def get_users_with_data():
-  users_with_data = []
-  for user in list_users():
-    ordered_visits = get_history_ordered_visits_for_user(user)
-    if len(ordered_visits) == 0:
-      continue
-    tab_focus_times = get_tab_focus_times_for_user(user)
-    if len(tab_focus_times) == 0:
-      continue
-    first_visit = tab_focus_times[0]
-    first_visit_time = first_visit['start']
-    first_visit_time = max(first_visit_time, ordered_visits[0]['visitTime']) / 1000.0
-    last_visit = ordered_visits[-1]
-    last_visit_time = float(last_visit['visitTime'])
-    last_visit_time = min(last_visit_time, tab_focus_times[-1]) / 1000.0
-    time_spent = last_visit_time - first_visit_time # seconds
-    #print user, time_spent/(3600.0*24)
-    if time_spent/(3600.0*24) > 10: # have at least 10 days of data
-      users_with_data.append(user)
-    #print user, datetime.datetime.fromtimestamp(last_visit_time)
-  return users_with_data
 
 
-def get_earliest_start_time(visits):
-  if len(visits) < 1:
-    raise Exception('get_earliest_time called with empty list')
-  first_visit = visits[0]
-  if 'start' in first_visit:
-    return first_visit['start']
-  return first_visit['visitTime']
 
-def get_last_end_time(visits):
-  if len(visits) < 1:
-    raise Exception('get_last_visit_time called with empty list')
-  last_visit = visits[-1]
-  if 'end' in last_visit:
-    return last_visit['end']
-  return last_visit['visitTime']
+
+
+
+
+
+
+
 
 
 def evaluation_stats_for_reconstruction(result_reference, result_reconstructed):
@@ -204,7 +177,7 @@ def add_empty_spans_and_restrict_to_time(spans, start, end):
 #add_empty_spans([{'start': 0, 'end': 2}, {'start': 5, 'end': 7}])
 
 
-def add_block_segment_to_stats(stats, ref_block, rec_block, start, end):
+def add_block_segment_to_stats(stats, ref_block, rec_block, start, end, next_url):
   ref_url = ref_block['url']
   rec_url = rec_block['url']
   duration = end - start
@@ -222,16 +195,36 @@ def add_block_segment_to_stats(stats, ref_block, rec_block, start, end):
     return
   ref_domain = url_to_domain(ref_url)
   rec_domain = url_to_domain(rec_url)
+  if 'next_url' in rec_block:
+    nexturl = rec_block['next_url']
+    if nexturl == ref_url:
+      stats['nexturl_correct'] += duration
+      return
   if ref_domain == rec_domain:
     stats['correct_domain'] += duration
     return
-  stats['incorrect_domain'] += duration
+  if 'next_url' in rec_block:
+    nexturl = rec_block['next_url']
+    nexturl_domain = url_to_domain(nexturl)
+    if nexturl_domain == ref_domain:
+      stats['nextdomain_correct'] += duration
+      return
+  if next_url == None:
+    stats['incorrect_domain_next_url_is_none'] += duration
+    return
+  next_domain = url_to_domain(next_url)
+  if next_domain == ref_domain:
+    stats['incorrect_domain_ref_equals_next_domain'] += duration
+    return
+  stats['incorrect_domain_other'] += duration
 
 def evalutate_tab_focus_reconstruction_fast(evaluated_tab_focus_times, evaluated_reconstructed_tab_focus_times):
   if len(evaluated_reconstructed_tab_focus_times) == 0 or len(evaluated_tab_focus_times) == 0:
     return {}
   ref_start_time = max(get_earliest_start_time(evaluated_tab_focus_times), get_earliest_start_time(evaluated_reconstructed_tab_focus_times))
   ref_end_time = min(get_last_end_time(evaluated_tab_focus_times), get_last_end_time(evaluated_reconstructed_tab_focus_times))
+  ref_start_time = max(ref_start_time, 1458371950000) # march 19th. may have had some data loss prior to that
+  ref_end_time = max(ref_end_time, 1458371950000)
   reference = add_empty_spans_and_restrict_to_time(evaluated_tab_focus_times, ref_start_time, ref_end_time)
   reconstructed = add_empty_spans_and_restrict_to_time(evaluated_reconstructed_tab_focus_times, ref_start_time, ref_end_time)
   ref_idx = 0
@@ -252,7 +245,10 @@ def evalutate_tab_focus_reconstruction_fast(evaluated_tab_focus_times, evaluated
     else:
       rec_idx += 1
       cur_end = rec_block['end']
-    add_block_segment_to_stats(stats, ref_block, rec_block, cur_time, cur_end)
+    next_url = None
+    if rec_idx+1 < len(reconstructed):
+      next_url = reconstructed[rec_idx+1]['url']
+    add_block_segment_to_stats(stats, ref_block, rec_block, cur_time, cur_end, next_url)
     cur_time = cur_end
   return stats
     
@@ -281,4 +277,7 @@ def ignore_all_before_start_or_after_end(visit_lengths, start_time, end_time):
     #  continue
     output.append(x)
   return output
+
+
+
 
