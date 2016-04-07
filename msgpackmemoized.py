@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: b2ff7b6919371e822aba984a7316e7bb
+# md5: 129ef148e78f4b14bb2e8b328c77af2d
 # coding: utf-8
 
 import msgpack

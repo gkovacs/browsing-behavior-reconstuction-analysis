@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 1d1688edb2a383124cae2934cbcdfd16
+# md5: 59eaa02986d9f97b297e21a968c48472
 # coding: utf-8
 
 import urlparse
@@ -15,6 +15,7 @@ from decompress_lzstring_base64_cython import decompressFromBase64
 
 from memoized import memoized
 
+import msgpack
 try:
   import ujson as json
 except:
@@ -126,6 +127,9 @@ def sdir_open(filename, mode='r'):
 def sdir_loadjson(filename):
   return json.load(sdir_open(filename))
 
+def sdir_loadmsgpack(filename):
+  return msgpack.load(sdir_open(filename))
+
 def sdir_loadjsonlines(filename):
   jfile = sdir_open(filename)
   for line in jfile:
@@ -138,6 +142,10 @@ def sdir_loadjsonlines(filename):
 def sdir_dumpjson(filename, data):
   ensure_sdir_exists()
   return json.dump(data, sdir_open(filename, 'w'))
+
+def sdir_dumpmsgpack(filename, data):
+  ensure_sdir_exists()
+  return msgpack.dump(data, sdir_open(filename, 'w'))
 
 def sdir_dumpjsonlines(filename, data):
   ensure_sdir_exists()

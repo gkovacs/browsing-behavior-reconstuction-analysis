@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 2d73857f1890d50c20291ae8b5ac8974
+# md5: c1919f329f33c01e0f2abe0caf0a107c
 # coding: utf-8
 
 from tmilib import *
@@ -19,6 +19,8 @@ from math import log
 
 import datetime
 import time
+
+import cPickle as pickle
 
 
 training_users = get_training_users()
@@ -209,7 +211,8 @@ def get_classifier():
 '''
 
 def get_feature_filter():
-  return '11111111111111111111111111111111111111111111111111111'
+  #return '11000000000000000000000000000000000000000000000000000'
+  #return '11111111111111111111111111111111111111111111111111111'
   return '11100000000000000000000000000000000000000000000000000'
   #selected_features = [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   #selected_features = [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -261,6 +264,7 @@ def get_filtered_features_test():
   return output
 '''
 
+'''
 def get_filtered_features_train():
   selected_features = get_feature_filter()
   return get_feature_vector_for_tensecondlevel_train(selected_features)
@@ -277,6 +281,27 @@ def get_training_labels():
 
 def get_labels_for_user(user):
   return get_tensecondlevel_activespan_labels_for_user(user)
+'''
+
+# we normally want to use the tensecond level ones
+def get_filtered_features_train():
+  selected_features = get_feature_filter()
+  return get_feature_vector_for_secondlevel_train(selected_features)
+
+def get_filtered_features_test():
+  selected_features = get_feature_filter()
+  return get_feature_vector_for_secondlevel_test(selected_features)
+
+def get_test_labels():
+  return get_labels_for_secondlevel_test()
+
+def get_training_labels():
+  return get_labels_for_secondlevel_train()
+
+def get_labels_for_user(user):
+  return get_secondlevel_activespan_labels_for_user(user)
+
+
 
 '''
 def filter_features(arr):
@@ -379,7 +404,12 @@ def get_selected_features_chi2():
   }
 
 
-classifier = get_classifier()
+pickle_file = 'classifier_allfeatures_randomforest.pickle'
+if path.exists(pickle_file):
+  classifier = pickle.load(open(pickle_file))
+else:
+  classifier = get_classifier()
+  pickle.dump(classifier, open(pickle_file, 'w'), pickle.HIGHEST_PROTOCOL)
 
 
 evaluate_classifier(classifier)
@@ -418,7 +448,6 @@ evaluate_classifier(classifier)
 #print [x for x in fromdomain_set if id_to_domain(x) == 'www.mturk.com']
 
 
-'''
 print 'get_selected_features_chi2'
 print datetime.datetime.fromtimestamp(time.time())
 print get_selected_features_chi2()
@@ -429,7 +458,6 @@ print 'get_selected_features_rfecv'
 print datetime.datetime.fromtimestamp(time.time())
 print get_selected_features_rfecv()
 #print get_selected_features_rfe()
-'''
 
 
 #print selector.support_
