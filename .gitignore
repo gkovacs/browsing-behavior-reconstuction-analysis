@@ -1,5 +1,15 @@
+h2o-3.8.1.4/
+h2o_backup/
 oldjson
 .ipynb_checkpoints
 *.pyc
 .getsecret.yaml
 *.json
+*.pickle
+*.jar
+*.zip
+screenlog.0
+*.dot
+*.png
+*.c
+*.html

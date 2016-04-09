@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 0cfbf1ec0c8f75321d86a4ecb691aadd
+# md5: 4e5040e6cad4dc169c2faf84650b6d31
 # coding: utf-8
 
 from tmilib_base import *
@@ -405,6 +405,38 @@ def compute_active_seconds_for_all_users():
 def compute_active_seconds_for_all_users_randomized():
   for user in shuffled(list_users_with_log_and_mlog()):
     compute_function_for_key(user, 'active_seconds_for_user')
+
+
+def compute_active_second_to_domain_id_for_user(user):
+  # this is in unix SECONDS timestamp, not in milliseconds!
+  # note that the keys are string in JSON
+  output = {}
+  last_output = None
+  for item in get_tab_focus_times_for_user(user):
+    url = item['url']
+    domain = url_to_domain(url)
+    domain_id = domain_to_id(domain)
+    start_seconds = int(round(item['start']/1000.0))
+    end_seconds = int(round(item['end']/1000.0))
+    for timestep in xrange(start_seconds, end_seconds+1):
+      if timestep > last_output:
+        last_output = timestep
+        output[timestep] = domain_id
+  return output
+
+def get_active_second_to_domain_id_for_user(user):
+  # will probably want to convert this into a set after returning
+  # this is in unix SECONDS timestamp, not in milliseconds!
+  # note that the keys are string in JSON
+  return get_function_for_key(user, 'active_second_to_domain_id_for_user')
+
+def compute_active_second_to_domain_id_for_all_users():
+  for user in list_users_with_log_and_mlog():
+    compute_function_for_key(user, 'active_second_to_domain_id_for_user')
+
+def compute_active_second_to_domain_id_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog()):
+    compute_function_for_key(user, 'active_second_to_domain_id_for_user')
 
 
 def compute_insession_seconds_for_user(user):
@@ -950,9 +982,79 @@ def compute_windows_at_time_for_all_users():
     compute_function_for_key(user, 'windows_at_time_for_user')
 
 def compute_windows_at_time_for_all_users_randomized():
-  for user in shuffled(list_users_with_hist()):
+  for user in shuffled(list_users_with_log_and_hist()):
     compute_function_for_key(user, 'windows_at_time_for_user')
 
+
+
+def compute_active_url_at_time_for_user(user):
+  output = {}
+  for time,windows in get_windows_at_time_for_user(user).viewitems():
+    isdone = False
+    for window in windows:
+      if isdone:
+        break
+      focused = window['focused']
+      if not focused:
+        continue
+      tabs = window['tabs']
+      for tab in tabs:
+        if not tab['highlighted']:
+          continue
+        if not tab['selected']:
+          continue
+        output[time] = tab['url']
+        isdone = True
+        break
+  return output
+
+def get_active_url_at_time_for_user(user):
+  return get_function_for_key(user, 'active_url_at_time_for_user')
+
+def compute_active_url_at_time_for_all_users():
+  for user in list_users_with_log_and_hist():
+    compute_function_for_key(user, 'active_url_at_time_for_user')
+
+def compute_active_url_at_time_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_hist()):
+    compute_function_for_key(user, 'active_url_at_time_for_user')
+
+
+
+def compute_active_domain_at_time_for_user(user):
+  output = {}
+  for time,url in get_active_url_at_time_for_user(user).viewitems():
+    output[time] = url_to_domain(url)
+  return output
+
+def get_active_domain_at_time_for_user(user):
+  return get_function_for_key(user, 'active_domain_at_time_for_user')
+
+def compute_active_domain_at_time_for_all_users():
+  for user in list_users_with_log_and_hist():
+    compute_function_for_key(user, 'active_domain_at_time_for_user')
+
+def compute_active_domain_at_time_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_hist()):
+    compute_function_for_key(user, 'active_domain_at_time_for_user')
+
+
+def compute_active_domain_id_at_time_for_user(user):
+  output = {}
+  for time,url in get_active_domain_at_time_for_user(user).viewitems():
+    output[time] = domain_to_id(url)
+  return output
+
+def get_active_domain_id_at_time_for_user(user):
+  return get_function_for_key(user, 'active_domain_id_at_time_for_user')
+
+def compute_active_domain_id_at_time_for_all_users():
+  for user in list_users_with_log_and_hist():
+    compute_function_for_key(user, 'active_domain_id_at_time_for_user')
+
+def compute_active_domain_id_at_time_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_hist()):
+    compute_function_for_key(user, 'active_domain_id_at_time_for_user')
 
 
 def compute_allurls_at_time_for_user(user):
@@ -1119,8 +1221,8 @@ def compute_url_switch_sources_for_all_users_randomized():
 
 
 def extract_secondlevel_activespan_dataset_for_user(user, only_tenseconds=False, only_insession=False):
-  #ordered_visits = get_history_ordered_visits_corrected_for_user(user)
-  ordered_visits = get_history_ordered_visits_for_user(user)
+  ordered_visits = get_history_ordered_visits_corrected_for_user(user)
+  #ordered_visits = get_history_ordered_visits_for_user(user)
   ordered_visits = exclude_bad_visits(ordered_visits)
   ordered_visits_len = len(ordered_visits)
   tab_focus_times = get_tab_focus_times_for_user(user)
@@ -1199,6 +1301,36 @@ def compute_tensecondlevel_activespan_dataset_for_all_users_randomized():
     compute_function_for_key(user, 'tensecondlevel_activespan_dataset_for_user')
 
 
+def compute_tensecondlevel_activespan_dataset_insession_for_user(user):
+  return extract_secondlevel_activespan_dataset_for_user(user, True, True) # not a typo. it handles both
+
+def get_tensecondlevel_activespan_dataset_insession_for_user(user):
+  return get_function_for_key(user, 'tensecondlevel_activespan_dataset_insession_for_user')
+
+def compute_tensecondlevel_activespan_dataset_insession_for_all_users():
+  for user in list_users_with_log_and_mlog_and_hist():
+    compute_function_for_key(user, 'tensecondlevel_activespan_dataset_insession_for_user')
+
+def compute_tensecondlevel_activespan_dataset_insession_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key(user, 'tensecondlevel_activespan_dataset_insession_for_user')
+
+
+def compute_secondlevel_activespan_dataset_insession_for_user(user):
+  return extract_secondlevel_activespan_dataset_for_user(user, False, True) # not a typo. it handles both
+
+def get_secondlevel_activespan_dataset_insession_for_user(user):
+  return get_function_for_key(user, 'secondlevel_activespan_dataset_insession_for_user')
+
+def compute_secondlevel_activespan_dataset_insession_for_all_users():
+  for user in list_users_with_log_and_mlog_and_hist():
+    compute_function_for_key(user, 'secondlevel_activespan_dataset_insession_for_user')
+
+def compute_secondlevel_activespan_dataset_insession_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key(user, 'secondlevel_activespan_dataset_insession_for_user')
+
+
 def compute_tensecondlevel_activespan_dataset_for_user(user):
   return extract_secondlevel_activespan_dataset_for_user(user, True) # not a typo. it handles both
 
@@ -1243,7 +1375,52 @@ def compute_tensecondlevel_activespan_dataset_labels_for_all_users_randomized():
     compute_function_for_key(user, 'tensecondlevel_activespan_dataset_labels_for_user')
 
 
+def compute_tensecondlevel_activespan_dataset_insession_labels_for_user(user):
+  for line in get_tensecondlevel_activespan_dataset_insession_for_user(user):
+    yield line[0]
 
+def get_tensecondlevel_activespan_dataset_insession_labels_for_user(user):
+  return get_function_for_key(user, 'tensecondlevel_activespan_dataset_insession_labels_for_user')
+
+def compute_tensecondlevel_activespan_dataset_insession_labels_for_all_users():
+  for user in list_users_with_log_and_mlog_and_hist():
+    compute_function_for_key(user, 'tensecondlevel_activespan_dataset_insession_labels_for_user')
+
+def compute_tensecondlevel_activespan_dataset_insession_labels_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key(user, 'tensecondlevel_activespan_dataset_insession_labels_for_user')
+
+
+def compute_secondlevel_activespan_dataset_insession_labels_for_user(user):
+  for line in get_secondlevel_activespan_dataset_insession_for_user(user):
+    yield line[0]
+
+def get_secondlevel_activespan_dataset_insession_labels_for_user(user):
+  return get_function_for_key(user, 'secondlevel_activespan_dataset_insession_labels_for_user')
+
+def compute_secondlevel_activespan_dataset_insession_labels_for_all_users():
+  for user in list_users_with_log_and_mlog_and_hist():
+    compute_function_for_key(user, 'secondlevel_activespan_dataset_insession_labels_for_user')
+
+def compute_secondlevel_activespan_dataset_insession_labels_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key(user, 'secondlevel_activespan_dataset_insession_labels_for_user')
+
+
+def compute_secondlevel_activespan_dataset_labels_for_user(user):
+  for line in get_secondlevel_activespan_dataset_for_user(user):
+    yield line[0]
+
+def get_secondlevel_activespan_dataset_labels_for_user(user):
+  return get_function_for_key(user, 'secondlevel_activespan_dataset_labels_for_user')
+
+def compute_secondlevel_activespan_dataset_labels_for_all_users():
+  for user in list_users_with_log_and_mlog_and_hist():
+    compute_function_for_key(user, 'secondlevel_activespan_dataset_labels_for_user')
+
+def compute_secondlevel_activespan_dataset_labels_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key(user, 'secondlevel_activespan_dataset_labels_for_user')
 
 
 def compute_secondlevel_activespan_dataset_labels_for_user(user):
@@ -1319,6 +1496,56 @@ def get_test_users():
   return get_training_and_test_users()[1]
 
 
+def compute_tensecondlevel_activespan_dataset_insession_train():
+  output = []
+  for user in get_training_users():
+    output.extend(get_tensecondlevel_activespan_dataset_insession_for_user(user))
+  return output
+
+def get_tensecondlevel_activespan_dataset_insession_train():
+  return create_and_get_msgpack('tensecondlevel_activespan_dataset_insession_train.msgpack')
+
+def precompute_tensecondlevel_activespan_dataset_insession_train():
+  create_if_doesnt_exist_msgpack('tensecondlevel_activespan_dataset_insession_train.msgpack')
+
+def compute_tensecondlevel_activespan_dataset_insession_test():
+  output = []
+  for user in get_test_users():
+    output.extend(get_tensecondlevel_activespan_dataset_insession_for_user(user))
+  return output
+
+def get_tensecondlevel_activespan_dataset_insession_test():
+  return create_and_get_msgpack('tensecondlevel_activespan_dataset_insession_test.msgpack')
+
+def precompute_tensecondlevel_activespan_dataset_insession_test():
+  create_if_doesnt_exist_msgpack('tensecondlevel_activespan_dataset_insession_test.msgpack')
+
+
+def compute_secondlevel_activespan_dataset_insession_train():
+  output = []
+  for user in get_training_users():
+    output.extend(get_secondlevel_activespan_dataset_insession_for_user(user))
+  return output
+
+def get_secondlevel_activespan_dataset_insession_train():
+  return create_and_get_msgpack('secondlevel_activespan_dataset_insession_train.msgpack')
+
+def precompute_secondlevel_activespan_dataset_insession_train():
+  create_if_doesnt_exist_msgpack('secondlevel_activespan_dataset_insession_train.msgpack')
+
+def compute_secondlevel_activespan_dataset_insession_test():
+  output = []
+  for user in get_test_users():
+    output.extend(get_secondlevel_activespan_dataset_insession_for_user(user))
+  return output
+
+def get_secondlevel_activespan_dataset_insession_test():
+  return create_and_get_msgpack('secondlevel_activespan_dataset_insession_test.msgpack')
+
+def precompute_secondlevel_activespan_dataset_insession_test():
+  create_if_doesnt_exist_msgpack('secondlevel_activespan_dataset_insession_test.msgpack')
+
+
 def compute_tensecondlevel_activespan_dataset_train():
   output = []
   for user in get_training_users():
@@ -1392,6 +1619,186 @@ def precompute_labels_for_tensecondlevel_test():
   create_if_doesnt_exist('labels_for_tensecondlevel_test.json')
 
 
+def compute_labels_for_tensecondlevel_insession_train():
+  for user in get_training_users():
+    for x in get_tensecondlevel_activespan_dataset_insession_labels_for_user(user):
+      yield x
+
+def get_labels_for_tensecondlevel_insession_train():
+  return create_and_get('labels_for_tensecondlevel_insession_train.json')
+
+def precompute_labels_for_tensecondlevel_insession_train():
+  create_if_doesnt_exist('labels_for_tensecondlevel_insession_train.json')
+
+def compute_labels_for_tensecondlevel_insession_test():
+  for user in get_test_users():
+    for x in get_tensecondlevel_activespan_dataset_insession_labels_for_user(user):
+      yield x
+
+def get_labels_for_tensecondlevel_insession_test():
+  return create_and_get('labels_for_tensecondlevel_insession_test.json')
+
+def precompute_labels_for_tensecondlevel_insession_test():
+  create_if_doesnt_exist('labels_for_tensecondlevel_insession_test.json')
+
+
+def compute_labels_for_secondlevel_insession_train():
+  for user in get_training_users():
+    for x in get_secondlevel_activespan_dataset_insession_labels_for_user(user):
+      yield x
+
+def get_labels_for_secondlevel_insession_train():
+  return create_and_get('labels_for_secondlevel_insession_train.json')
+
+def precompute_labels_for_secondlevel_insession_train():
+  create_if_doesnt_exist('labels_for_secondlevel_insession_train.json')
+
+def compute_labels_for_secondlevel_insession_test():
+  for user in get_test_users():
+    for x in get_secondlevel_activespan_dataset_insession_labels_for_user(user):
+      yield x
+
+def get_labels_for_secondlevel_insession_test():
+  return create_and_get('labels_for_secondlevel_insession_test.json')
+
+def precompute_labels_for_secondlevel_insession_test():
+  create_if_doesnt_exist('labels_for_secondlevel_insession_test.json')
+
+
+def compute_feature_vector_for_tensecondlevel_insession_train(enabled_features):
+  return tmilib_cython.dataset_to_feature_vectors(numpy.asarray(get_tensecondlevel_activespan_dataset_insession_train(), dtype=float), enabled_features)
+
+def get_feature_vector_for_tensecondlevel_insession_train(enabled_features):
+  return get_function_for_key(enabled_features, 'feature_vector_for_tensecondlevel_insession_train')
+
+
+def compute_feature_vector_for_secondlevel_insession_train(enabled_features):
+  return tmilib_cython.dataset_to_feature_vectors(numpy.asarray(get_secondlevel_activespan_dataset_insession_train(), dtype=float), enabled_features)
+
+def get_feature_vector_for_secondlevel_insession_train(enabled_features):
+  return get_function_for_key(enabled_features, 'feature_vector_for_secondlevel_insession_train')
+
+
+def compute_feature_vector_for_tensecondlevel_insession_threefeatures_for_user(user):
+  dataset = numpy.asarray(get_tensecondlevel_activespan_dataset_insession_for_user(user), dtype=float)
+  if len(dataset) == 0:
+    return []
+  return tmilib_cython.dataset_to_feature_vectors(dataset, '111' + ('0'*50))
+
+def get_feature_vector_for_tensecondlevel_insession_threefeatures_for_user(user):
+  return get_function_for_key(user, 'feature_vector_for_tensecondlevel_insession_threefeatures_for_user')
+
+def compute_feature_vector_for_tensecondlevel_insession_threefeatures_for_all_users_randomized():
+  #for user in shuffled(get_training_users() + get_test_users()):
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key(user, 'feature_vector_for_tensecondlevel_insession_threefeatures_for_user')
+
+
+def compute_feature_vector_for_secondlevel_insession_threefeatures_for_user(user):
+  dataset = numpy.asarray(get_secondlevel_activespan_dataset_insession_for_user(user), dtype=float)
+  if len(dataset) == 0:
+    return []
+  return tmilib_cython.dataset_to_feature_vectors(dataset, '111' + ('0'*50))
+
+def get_feature_vector_for_secondlevel_insession_threefeatures_for_user(user):
+  return get_function_for_key(user, 'feature_vector_for_secondlevel_insession_threefeatures_for_user')
+
+def compute_feature_vector_for_secondlevel_insession_threefeatures_for_all_users_randomized():
+  #for user in shuffled(get_training_users() + get_test_users()):
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key(user, 'feature_vector_for_secondlevel_insession_threefeatures_for_user')
+
+
+def compute_feature_vector_for_tensecondlevel_threefeatures_for_user(user):
+  dataset = numpy.asarray(get_tensecondlevel_activespan_dataset_for_user(user), dtype=float)
+  if len(dataset) == 0:
+    return []
+  return tmilib_cython.dataset_to_feature_vectors(dataset, '111' + ('0'*50))
+
+def get_feature_vector_for_tensecondlevel_threefeatures_for_user(user):
+  return get_function_for_key(user, 'feature_vector_for_tensecondlevel_threefeatures_for_user')
+
+def compute_feature_vector_for_tensecondlevel_threefeatures_for_all_users_randomized():
+  #for user in shuffled(get_training_users() + get_test_users()):
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key(user, 'feature_vector_for_tensecondlevel_threefeatures_for_user')
+
+
+def compute_feature_vector_for_secondlevel_threefeatures_for_user(user):
+  dataset = numpy.asarray(get_secondlevel_activespan_dataset_for_user(user), dtype=float)
+  if len(dataset) == 0:
+    return []
+  return tmilib_cython.dataset_to_feature_vectors(dataset, '111' + ('0'*50))
+
+def get_feature_vector_for_secondlevel_threefeatures_for_user(user):
+  return get_function_for_key(user, 'feature_vector_for_secondlevel_threefeatures_for_user')
+
+def compute_feature_vector_for_secondlevel_threefeatures_for_all_users_randomized():
+  #for user in shuffled(get_training_users() + get_test_users()):
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key(user, 'feature_vector_for_secondlevel_threefeatures_for_user')
+
+
+def compute_feature_vector_for_tensecondlevel_insession_allfeatures_for_user(user):
+  dataset = numpy.asarray(get_tensecondlevel_activespan_dataset_insession_for_user(user), dtype=float)
+  if len(dataset) == 0:
+    return []
+  return tmilib_cython.dataset_to_feature_vectors(dataset, '1'*53)
+
+def get_feature_vector_for_tensecondlevel_insession_allfeatures_for_user(user):
+  return get_function_for_key(user, 'feature_vector_for_tensecondlevel_insession_allfeatures_for_user')
+
+def compute_feature_vector_for_tensecondlevel_insession_allfeatures_for_all_users_randomized():
+  #for user in shuffled(get_training_users() + get_test_users()):
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key(user, 'feature_vector_for_tensecondlevel_insession_allfeatures_for_user')
+
+
+def compute_feature_vector_for_secondlevel_insession_allfeatures_for_user(user):
+  dataset = numpy.asarray(get_secondlevel_activespan_dataset_insession_for_user(user), dtype=float)
+  if len(dataset) == 0:
+    return []
+  return tmilib_cython.dataset_to_feature_vectors(dataset, '1'*53)
+
+def get_feature_vector_for_secondlevel_insession_allfeatures_for_user(user):
+  return get_function_for_key(user, 'feature_vector_for_secondlevel_insession_allfeatures_for_user')
+
+def compute_feature_vector_for_secondlevel_insession_allfeatures_for_all_users_randomized():
+  #for user in shuffled(get_training_users() + get_test_users()):
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key(user, 'feature_vector_for_secondlevel_insession_allfeatures_for_user')
+
+
+def compute_feature_vector_for_tensecondlevel_allfeatures_for_user(user):
+  dataset = numpy.asarray(get_tensecondlevel_activespan_dataset_for_user(user), dtype=float)
+  if len(dataset) == 0:
+    return []
+  return tmilib_cython.dataset_to_feature_vectors(dataset, '1'*53)
+
+def get_feature_vector_for_tensecondlevel_allfeatures_for_user(user):
+  return get_function_for_key(user, 'feature_vector_for_tensecondlevel_allfeatures_for_user')
+
+def compute_feature_vector_for_tensecondlevel_allfeatures_for_all_users_randomized():
+  #for user in shuffled(get_training_users() + get_test_users()):
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key(user, 'feature_vector_for_tensecondlevel_allfeatures_for_user')
+
+
+def compute_feature_vector_for_secondlevel_allfeatures_for_user(user):
+  dataset = numpy.asarray(get_secondlevel_activespan_dataset_for_user(user), dtype=float)
+  if len(dataset) == 0:
+    return []
+  return tmilib_cython.dataset_to_feature_vectors(dataset, '1'*53)
+
+def get_feature_vector_for_secondlevel_allfeatures_for_user(user):
+  return get_function_for_key(user, 'feature_vector_for_secondlevel_allfeatures_for_user')
+
+def compute_feature_vector_for_secondlevel_allfeatures_for_all_users_randomized():
+  #for user in shuffled(get_training_users() + get_test_users()):
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key(user, 'feature_vector_for_secondlevel_allfeatures_for_user')
+
+
 def compute_feature_vector_for_tensecondlevel_train(enabled_features):
   return tmilib_cython.dataset_to_feature_vectors(numpy.asarray(get_tensecondlevel_activespan_dataset_train(), dtype=float), enabled_features)
 
@@ -1404,6 +1811,20 @@ def compute_feature_vector_for_secondlevel_train(enabled_features):
 
 def get_feature_vector_for_secondlevel_train(enabled_features):
   return get_function_for_key(enabled_features, 'feature_vector_for_secondlevel_train')
+
+
+def compute_feature_vector_for_tensecondlevel_insession_test(enabled_features):
+  return tmilib_cython.dataset_to_feature_vectors(numpy.asarray(get_tensecondlevel_activespan_dataset_insession_test(), dtype=float), enabled_features)
+
+def get_feature_vector_for_tensecondlevel_insession_test(enabled_features):
+  return get_function_for_key(enabled_features, 'feature_vector_for_tensecondlevel_insession_test')
+
+
+def compute_feature_vector_for_secondlevel_insession_test(enabled_features):
+  return tmilib_cython.dataset_to_feature_vectors(numpy.asarray(get_secondlevel_activespan_dataset_insession_test(), dtype=float), enabled_features)
+
+def get_feature_vector_for_secondlevel_insession_test(enabled_features):
+  return get_function_for_key(enabled_features, 'feature_vector_for_secondlevel_insession_test')
 
 
 def compute_feature_vector_for_tensecondlevel_test(enabled_features):

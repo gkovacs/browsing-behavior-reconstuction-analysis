@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: a61d857741b148de81b8d656d8094ed3
+# md5: 8e9d69bb084321702e622bbb1f5ad94b
 # coding: utf-8
 
 from tmilib import *
@@ -14,6 +14,7 @@ import sklearn.linear_model
 import sklearn.ensemble
 import sklearn.naive_bayes
 import sklearn.tree
+import xgboost
 
 from math import log
 
@@ -23,6 +24,7 @@ import time
 import cPickle as pickle
 
 
+import traceback
 import sys
 
 
@@ -213,66 +215,14 @@ def get_classifier():
   return train_classifier_on_data(extract_tensecondlevel_dataset_for_training())
 '''
 
-#global_feature_filter = '11100000000000000000000000000000000000000000000000000'
 global_feature_filter = '1'*53
+#global_feature_filter = '11100000000000000000000000000000000000000000000000000'
 
 def get_feature_filter():
   return global_feature_filter
-  #return '11000000000000000000000000000000000000000000000000000'
-  #return '11111111111111111111111111111111111111111111111111111'
-  #return '11100000000000000000000000000000000000000000000000000'
-  #selected_features = [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-  #selected_features = [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-  #selected_features = [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-  #selected_features = [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-  #selected_features = [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-  #selected_features = [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-  #selected_features = [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]
-  #selected_features = [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-  #selected_features = [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]
-  #selected_features = [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1]
-  #selected_features = [True,False,True,False,False,False,False,True,True,False,True,False]
   return ''.join(map(str, selected_features))
 
-'''
-def get_filtered_features():
-  selected_features = get_feature_filter()
-  selected_features_str = ''.join(map(str, selected_features))
-  selected_features_filename = 'filtered_features_' + selected_features_str + '.msgpack'
-  if path.exists(selected_features_filename):
-    #return numpy.loadtxt()
-    #return json.load(open(selected_features_filename))
-    return msgpack.load(open(selected_features_filename))
-  output = filter_features(get_training_feature_vector())
-  msgpack.dump(output, open(selected_features_filename, 'w'))
-  #json.dump(output, open(selected_features_filename, 'w'))
-  return output
-'''
-
-'''
-def get_filtered_features_train():
-  selected_features = get_feature_filter()
-  selected_features_str = ''.join(map(str, selected_features))
-  selected_features_filename = 'features_train_' + selected_features_str + '.msgpack'
-  if path.exists(selected_features_filename):
-    return msgpack.load(open(selected_features_filename))
-  output = dataset_to_feature_vectors(extract_tensecondlevel_dataset_for_training(), selected_features)
-  msgpack.dump(output, open(selected_features_filename, 'w'))
-  return output
-
-def get_filtered_features_test():
-  selected_features = get_feature_filter()
-  selected_features_str = ''.join(map(str, selected_features))
-  selected_features_filename = 'features_test_' + selected_features_str + '.msgpack'
-  if path.exists(selected_features_filename):
-    return msgpack.load(open(selected_features_filename))
-  output = dataset_to_feature_vectors(extract_tensecondlevel_dataset_for_test(), selected_features)
-  msgpack.dump(output, open(selected_features_filename, 'w'))
-  return output
-'''
-
 is_second = len(sys.argv) > 1 and sys.argv[1] == 'second'
-print 'is_second: ' + str(is_second)
 
 @memoized
 def get_filtered_features_train():
@@ -337,16 +287,20 @@ def filter_features(arr):
   return output
 '''
 
-#classifier_algorithm = sklearn.ensemble.AdaBoostClassifier
+classifier_algorithm = xgboost.XGBClassifier
+xgboost_params = {}
 
 def get_classifier():
   #classifier = sklearn.naive_bayes.GaussianNB()
   #classifier = sklearn.linear_model.SGDClassifier(loss='modified_huber') # .73 on test
   #classifier = sklearn.linear_model.SGDClassifier()
   #classifier = sklearn.ensemble.RandomForestClassifier()
+  classifier = xgboost.XGBClassifier()
+  classifier.set_params(**xgboost_params)
+  #classifier.train()
   #classifier = sklearn.ensemble.AdaBoostClassifier()
   #classifier = sklearn.ensemble.GradientBoostingClassifier()
-  classifier = classifier_algorithm()
+  #classifier = classifier_algorithm()
   classifier.fit(get_filtered_features_train(), get_training_labels())
   return classifier
 
@@ -391,10 +345,19 @@ def make_predictions_with_classifier_on_test(classifier):
   #return classifier.predict(filter_features(numpy.array(get_test_feature_vector())))
   return classifier.predict(get_filtered_features_test())
 
+def make_predictions_with_classifier_on_train(classifier):
+  #return classifier.predict(filter_features(numpy.array(get_test_feature_vector())))
+  return classifier.predict(get_filtered_features_train())
+
+
 def evaluate_classifier(classifier):
   test_predictions = make_predictions_with_classifier_on_test(classifier)
   print sklearn.metrics.classification_report(get_test_labels(), test_predictions)
 
+def evaluate_classifier_train(classifier):
+  train_predictions = make_predictions_with_classifier_on_train(classifier)
+  print sklearn.metrics.classification_report(get_training_labels(), test_predictions)
+  
 def evaluate_classifier_for_user(classifier, user):
   dataset = extract_secondlevel_dataset_from_user(user, True)
   test_labels = get_labels_for_user(user)
@@ -407,37 +370,18 @@ def evaluate_classifier_for_user(classifier, user):
 #a= get_training_feature_vector()
 
 
-def get_selected_features_rfe():
-  classifier = sklearn.linear_model.SGDClassifier()
-  selector = sklearn.feature_selection.RFE(classifier, 10, step=1)
-  selector = selector.fit(numpy.array(get_training_feature_vector()), numpy.array(get_training_labels()))
-  return {
-    'n_features': selector.n_features_,
-    'support': map(int, selector.support_),
-    'ranking': map(int, selector.ranking_),
-  }
-  # return selector.ranking_
 
-def get_selected_features_rfecv():
-  classifier = sklearn.linear_model.SGDClassifier()
-  selector = sklearn.feature_selection.RFECV(classifier, step=1)
-  selector = selector.fit(numpy.array(get_training_feature_vector()), numpy.array(get_training_labels()))
-  return {
-    'n_features': selector.n_features_,
-    'support': map(int, selector.support_),
-    'ranking': map(int, selector.ranking_),
-  }
 
-def get_selected_features_chi2():
-  selector = sklearn.feature_selection.chi2(numpy.array(get_training_feature_vector()), numpy.array(get_training_labels()))
-  return {
-    'chi2': selector[0],
-    'pval': selector[1],
-  }
+
+
 
 
 '''
-pickle_file = 'classifier_threefeatures_randomforest.pickle'
+global_feature_filter = '1'*53
+#classifier_algorithm = xgboost.XGBClassifier()
+xgboost_params = {}
+
+pickle_file = 'classifier_allfeatures_xgboost.pickle'
 if path.exists(pickle_file):
   classifier = pickle.load(open(pickle_file))
 else:
@@ -448,65 +392,46 @@ evaluate_classifier(classifier)
 '''
 
 
+'''
+xgboost_params = {'objective': "binary:logistic"}
 
-
-
-if is_second:
-  global_feature_filter = '1'*53
-  #classifier_algorithm = sklearn.ensemble.RandomForestClassifier
-
-  pickle_file = 'classifier_allfeatures_randomforest_second_v5.pickle'
-  if path.exists(pickle_file):
-    classifier = pickle.load(open(pickle_file))
-  else:
-    classifier = get_classifier()
-    pickle.dump(classifier, open(pickle_file, 'w'), pickle.HIGHEST_PROTOCOL)
-
-  evaluate_classifier(classifier)
+pickle_file = 'classifier_allfeatures_xgboost_binary_logistic.pickle'
+if path.exists(pickle_file):
+  classifier = pickle.load(open(pickle_file))
 else:
-  for criterion,min_samples_split,min_samples_leaf in shuffled(list(itertools.product(
-    ['gini', 'entropy'],
-    [1, 2, 3, 4],
-    [1, 2, 3],
-  ))):
-    features_string = '_'.join(map(str, ['criterion', criterion, 'min_samples_split', min_samples_split, 'min_samples_leaf', min_samples_leaf]))
+  classifier = get_classifier()
+  pickle.dump(classifier, open(pickle_file, 'w'), pickle.HIGHEST_PROTOCOL)
+
+evaluate_classifier(classifier)
+'''
+
+
+xgboost_params = {'objective': "binary:logistic"}
+for colsample_bytree in [1.0, 0.9, 0.8, 0.7, 0.6, 0.5]:
+  for subsample in shuffled([0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0]):
+    xgboost_params['subsample'] = subsample
+    xgboost_params['colsample_bytree'] = colsample_bytree
+    features_string = '_'.join(map(str, ['subsample', subsample, 'colsample_bytree', colsample_bytree]))
     if is_second:
-      model_path = sdir_path('scikit_randomforest_allfeatures_second_v5_' + features_string + '.pickle')
+      classifier_filename = 'xgboost_second_allfeatures_' + features_string + '.pickle'
     else:
-      model_path = sdir_path('scikit_randomforest_allfeatures_tensecond_v5_' + features_string + '.pickle')
-    if path.exists(model_path):
+      classifier_filename = 'xgboost_tensecond_allfeatures_' + features_string + '.pickle'
+    if path.exists(classifier_filename):
       continue
+    print classifier_filename
     try:
-      print model_path
-      classifier_algorithm = lambda: sklearn.ensemble.RandomForestClassifier(criterion=criterion, min_samples_split=min_samples_split, min_samples_leaf=min_samples_leaf)
       classifier = get_classifier()
-      pickle.dump(classifier, open(model_path, 'w'), pickle.HIGHEST_PROTOCOL)
+      pickle.dump(classifier, open(classifier_filename, 'w'), pickle.HIGHEST_PROTOCOL)
       evaluate_classifier(classifier)
     except:
       traceback.print_exc()
       continue
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 '''
-pickle_file = 'classifier_threefeatures_randomforest_v2.pickle'
+xgboost_params = {'max_depth': 4, 'num_parallel_tree': 1000, 'subsample': 0.5, 'colsample_bytree': 0.5, 'nround': 1, 'objective': "binary:logistic"}
+
+pickle_file = 'classifier_allfeatures_xgboost_randomforest.pickle'
 if path.exists(pickle_file):
   classifier = pickle.load(open(pickle_file))
 else:
@@ -523,103 +448,67 @@ evaluate_classifier(classifier)
 
 
 
-'''
-pickle_file = 'classifier_allfeatures_randomforest.pickle'
-if path.exists(pickle_file):
-  classifier = pickle.load(open(pickle_file))
-else:
-  classifier = get_classifier()
-  pickle.dump(classifier, open(pickle_file, 'w'), pickle.HIGHEST_PROTOCOL)
-
-evaluate_classifier(classifier)
-'''
 
 
 
 
 
-'''
-pickle_file = 'classifier_allfeatures_randomforest_v2.pickle'
-if path.exists(pickle_file):
-  classifier = pickle.load(open(pickle_file))
-else:
-  classifier = get_classifier()
-  pickle.dump(classifier, open(pickle_file, 'w'), pickle.HIGHEST_PROTOCOL)
-
-evaluate_classifier(classifier)
-'''
 
 
 
 
 
-#training_features = get_training_feature_vector()
 
 
-#for line in training_features:
-#  if line[4] == 1:
-#    print line
-#    break
 
 
-#dataset = extract_secondlevel_dataset_from_user(training_users[0], True)
 
 
-#feature_vectors = dataset_to_feature_vectors(dataset)
 
 
-#for line in feature_vectors:
-#  if line[5] == 1:
-#    print line
-#    break
 
 
-#fromdomain_set = set(dataset['fromdomain'])
 
 
-#print domain_to_id(top_n_domains_by_visits()[0])
 
 
-#print [x for x in fromdomain_set if id_to_domain(x) == 'www.mturk.com']
 
 
-'''
-print 'get_selected_features_chi2'
-print datetime.datetime.fromtimestamp(time.time())
-print get_selected_features_chi2()
-print 'get_selected_features_rfe'
-print datetime.datetime.fromtimestamp(time.time())
-print get_selected_features_rfe()
-print 'get_selected_features_rfecv'
-print datetime.datetime.fromtimestamp(time.time())
-print get_selected_features_rfecv()
-#print get_selected_features_rfe()
-'''
 
 
-#print selector.support_
-#print selector.ranking_
 
 
-#classifier = get_classifier()
-#evaluate_classifier(classifier)
-#evaluate_classifier(get_classifier())
-#classifier = get_classifier()
-#test_predictions = make_predictions_with_classifier_on_test(classifier)
-'''
-precision_all,recall_all,_ = sklearn.metrics.precision_recall_curve(get_test_labels(), test_predictions)
 
-best_f1 = 0.0
-precision = 0.0
-recall = 0.0
-for x,y in zip(precision_all,recall_all):
-  f1 = 2*(x*y)/(x+y)
-  if f1 > best_f1:
-    best_f1 = f1
-    precision = x
-    recall = y
-print best_f1, precision, recall
-'''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

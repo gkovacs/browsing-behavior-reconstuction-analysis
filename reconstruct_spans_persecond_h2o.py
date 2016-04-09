@@ -1,6 +1,11 @@
 #!/usr/bin/env python
-# md5: a61d857741b148de81b8d656d8094ed3
+# md5: ff147d68309fffc5d1eede99f69ed67a
 # coding: utf-8
+
+import csv
+import sys
+import traceback
+
 
 from tmilib import *
 
@@ -22,8 +27,9 @@ import time
 
 import cPickle as pickle
 
-
-import sys
+import h2o
+import h2o.grid
+h2o.init()
 
 
 training_users = get_training_users()
@@ -213,8 +219,7 @@ def get_classifier():
   return train_classifier_on_data(extract_tensecondlevel_dataset_for_training())
 '''
 
-#global_feature_filter = '11100000000000000000000000000000000000000000000000000'
-global_feature_filter = '1'*53
+global_feature_filter = '11100000000000000000000000000000000000000000000000000'
 
 def get_feature_filter():
   return global_feature_filter
@@ -271,34 +276,19 @@ def get_filtered_features_test():
   return output
 '''
 
-is_second = len(sys.argv) > 1 and sys.argv[1] == 'second'
-print 'is_second: ' + str(is_second)
-
-@memoized
 def get_filtered_features_train():
   selected_features = get_feature_filter()
-  if is_second:
-    return numpy.array(get_feature_vector_for_secondlevel_train(selected_features))
-  return numpy.array(get_feature_vector_for_tensecondlevel_train(selected_features))
+  return get_feature_vector_for_tensecondlevel_insession_train(selected_features)
 
-@memoized
 def get_filtered_features_test():
   selected_features = get_feature_filter()
-  if is_second:
-    return numpy.array(get_feature_vector_for_secondlevel_test(selected_features))
-  return numpy.array(get_feature_vector_for_tensecondlevel_test(selected_features))
+  return get_feature_vector_for_tensecondlevel_insession_test(selected_features)
 
-@memoized
 def get_test_labels():
-  if is_second:
-    return numpy.array(get_labels_for_secondlevel_test())
-  return numpy.array(get_labels_for_tensecondlevel_test())
+  return get_labels_for_tensecondlevel_insession_test()
 
-@memoized
 def get_training_labels():
-  if is_second:
-    return numpy.array(get_labels_for_secondlevel_train())
-  return numpy.array(get_labels_for_tensecondlevel_train())
+  return get_labels_for_tensecondlevel_insession_train()
 
 #def get_labels_for_user(user):
 #  return get_tensecondlevel_activespan_labels_for_user(user)
@@ -338,6 +328,9 @@ def filter_features(arr):
 '''
 
 #classifier_algorithm = sklearn.ensemble.AdaBoostClassifier
+train_dataset = sdir_path('catdata_train_tensecond.csv')
+#classifier_algorithm = h2o.estimators.H2ORandomForestEstimator
+classifier_algorithm = h2o.estimators.H2OGradientBoostingEstimator
 
 def get_classifier():
   #classifier = sklearn.naive_bayes.GaussianNB()
@@ -346,12 +339,20 @@ def get_classifier():
   #classifier = sklearn.ensemble.RandomForestClassifier()
   #classifier = sklearn.ensemble.AdaBoostClassifier()
   #classifier = sklearn.ensemble.GradientBoostingClassifier()
-  classifier = classifier_algorithm()
-  classifier.fit(get_filtered_features_train(), get_training_labels())
+  #classifier = classifier_algorithm()
+  classifier = classifier_algorithm() #h2o.estimators.H2ORandomForestEstimator(binomial_double_trees=True)
+  #classifier.fit(get_filtered_features_train(), get_training_labels())
+  #classifier.train(x=get_filtered_features_train(), y=get_training_labels())
+  training_data = h2o.import_file(train_dataset)
+  test_data = h2o.import_file(train_dataset.replace('train', 'test'))
+  classifier.train(x=training_data.columns[1:], y=training_data.columns[0], training_frame=training_data, validation_frame=test_data)
   return classifier
 
 
-
+#print len(get_filtered_features_train())
+#print len(get_training_labels())
+#print len(get_filtered_features_test())
+#print len(get_test_labels())
 
 
 
@@ -451,40 +452,164 @@ evaluate_classifier(classifier)
 
 
 
-if is_second:
-  global_feature_filter = '1'*53
-  #classifier_algorithm = sklearn.ensemble.RandomForestClassifier
+def to_h2o_dataframe_csv_file(outpath, features, labels):
+  outfile = csv.writer(open(outpath, 'w'))
+  num_features = len(features[0])
+  outfile.writerow(['label'] + ['f'+str(i) for i in range(num_features)])
+  for idx in range(len(features)):
+    outfile.writerow([int(labels[idx])] + features[idx][0:3] + map(int, features[idx][3:]))
 
-  pickle_file = 'classifier_allfeatures_randomforest_second_v5.pickle'
-  if path.exists(pickle_file):
-    classifier = pickle.load(open(pickle_file))
-  else:
-    classifier = get_classifier()
-    pickle.dump(classifier, open(pickle_file, 'w'), pickle.HIGHEST_PROTOCOL)
 
-  evaluate_classifier(classifier)
+
+
+
+
+
+
+
+
+
+
+
+
+
+'''
+# did this get trained on second-level data?
+train_dataset = sdir_path('h2odata_train_threefeatures_insession.csv')
+model_file = sdir_path('binclassifier_threefeatures_randomforest_insession.h2o')
+if path.exists(model_file):
+  pass
+  #classifier = h2o.load_model(model_file)
 else:
-  for criterion,min_samples_split,min_samples_leaf in shuffled(list(itertools.product(
-    ['gini', 'entropy'],
-    [1, 2, 3, 4],
-    [1, 2, 3],
-  ))):
-    features_string = '_'.join(map(str, ['criterion', criterion, 'min_samples_split', min_samples_split, 'min_samples_leaf', min_samples_leaf]))
+  classifier = get_classifier()
+  #pickle.dump(classifier, open(pickle_file, 'w'), pickle.HIGHEST_PROTOCOL)
+  #evaluate_classifier(classifier)
+  print classifier
+  h2o.save_model(classifier, model_file)
+'''
+
+
+'''
+train_dataset = sdir_path('h2odata_train_threefeatures.csv')
+model_file = sdir_path('binclassifier_threefeatures_randomforest.h2o')
+if path.exists(model_file):
+  pass
+  #classifier = h2o.load_model(model_file)
+else:
+  classifier = get_classifier()
+  #pickle.dump(classifier, open(pickle_file, 'w'), pickle.HIGHEST_PROTOCOL)
+  #evaluate_classifier(classifier)
+  print classifier
+  h2o.save_model(classifier, model_file)
+'''
+
+
+def train_classifier_second(model_name):
+  model_file = sdir_path(model_name)
+  if path.exists(model_file):
+    return
+  global train_dataset
+  train_dataset = sdir_path('catdata_train_second_shuffled.csv')
+  classifier = get_classifier()
+  print classifier
+  h2o.save_model(classifier, model_file)
+
+
+def train_classifier(model_name):
+  model_file = sdir_path(model_name)
+  if path.exists(model_file):
+    return
+  print model_name
+  global train_dataset
+  train_dataset = sdir_path('catdata_train_tensecond_shuffled.csv')
+  classifier = get_classifier()
+  print classifier
+  h2o.save_model(classifier, model_file)
+  
+
+
+def train_classifier_grid_search(model_name):
+  model_file = sdir_path(model_name)
+  if path.exists(model_file):
+    return
+  print model_name
+  global train_dataset
+  train_dataset = sdir_path('catdata_train_tensecond_shuffled.csv')
+  classifier = get_classifier()
+  print classifier
+  h2o.save_model(classifier, model_file)
+
+
+
+
+
+if __name__ == "__main__":
+  '''
+  #hyper_parameters = {'ntrees':[10,50], 'max_depth':[20,10], 'binomial_double_trees':[True,False], 'nbins_cats': [1024,512]}
+  hyper_parameters = {'ntrees':[10,50], 'max_depth':[20,10]}
+  grid_search = h2o.grid.grid_search.H2OGridSearch(h2o.estimators.H2ORandomForestEstimator, hyper_params=hyper_parameters)
+  train_dataset = sdir_path('catdata_train_tensecond.csv')
+  training_data = h2o.import_file(train_dataset)
+  #test_data = h2o.import_file(train_dataset.replace('train', 'test'))
+  #classifier.train(x=training_data.columns[1:], y=training_data.columns[0], training_frame=training_data, validation_frame=test_data)
+  grid_search.train(x=training_data.columns[1:], y=training_data.columns[0], training_frame=training_data)
+  grid_search.show()
+  print grid_search.sort_by('F1', False)
+  best_model_id = grid_search.sort_by('F1', False)['Model Id'][0]
+  print grid_search.get_hyperparams(best_model_id)
+  best_model = h2o.get_model(best_model_id)
+  h2o.save_model(best_model, sdir_path('binclassifier_catfeatures_randomforest_gridsearch_v4.h2o'))
+  '''
+  is_second = len(sys.argv) > 1 and sys.argv[1] == 'second'
+  if is_second:
+    print 'doing second-level reconstruction'
+    train_dataset = sdir_path('catdata_train_second.csv')
+  else:
+    print 'doing tensecond-level reconstruction'
+    train_dataset = sdir_path('catdata_train_tensecond.csv')
+  training_data = h2o.import_file(train_dataset)
+  test_data = h2o.import_file(train_dataset.replace('train', 'test'))
+  for mtries,sample_rate in shuffled(list(itertools.product([1, 2, 3, 5, 6, 7], [0.50, 0.60, 0.70, 0.80, 0.90, 0.95, 1.0]))):
+    features_string = '_'.join(map(str, ['mtries', mtries, 'sample_rate', sample_rate]))
     if is_second:
-      model_path = sdir_path('scikit_randomforest_allfeatures_second_v5_' + features_string + '.pickle')
+      model_path = sdir_path('binclassifier_catfeatures_randomforest_second_v5_' + features_string + '.h2o')
     else:
-      model_path = sdir_path('scikit_randomforest_allfeatures_tensecond_v5_' + features_string + '.pickle')
+      model_path = sdir_path('binclassifier_catfeatures_randomforest_v5_' + features_string + '.h2o')
     if path.exists(model_path):
       continue
+    print features_string
     try:
-      print model_path
-      classifier_algorithm = lambda: sklearn.ensemble.RandomForestClassifier(criterion=criterion, min_samples_split=min_samples_split, min_samples_leaf=min_samples_leaf)
-      classifier = get_classifier()
-      pickle.dump(classifier, open(model_path, 'w'), pickle.HIGHEST_PROTOCOL)
-      evaluate_classifier(classifier)
+      classifier = h2o.estimators.H2ORandomForestEstimator(build_tree_one_node=True, mtries=mtries, sample_rate=sample_rate)
+      classifier.train(x=training_data.columns[1:], y=training_data.columns[0], training_frame=training_data, validation_frame=test_data)
+      h2o.save_model(classifier, model_path)
+      print classifier
     except:
-      traceback.print_exc()
+      print traceback.format_exc()
       continue
+  #classifier_algorithm = h2o.estimators.deeplearning.H2ODeepLearningEstimator
+  #train_classifier('binclassifier_catfeatures_deeplearning_v3.h2o')
+  
+  #classifier_algorithm = lambda: h2o.estimators.H2ORandomForestEstimator(ntrees=10, binomial_double_trees=True, build_tree_one_node=True)
+  #train_classifier('binclassifier_catfeatures_randomforest_v3.h2o')
+
+  #classifier_algorithm = lambda: h2o.estimators.H2OGradientBoostingEstimator(build_tree_one_node=True)
+  #train_classifier('binclassifier_catfeatures_gradientboost_v3.h2o')
+
+  # appears not to be a classification algorithm?
+  #classifier_algorithm = lambda: h2o.estimators.H2OGeneralizedLinearEstimator(solver='L_BFGS', family='binomial')
+  #train_classifier('binclassifier_catfeatures_generalizedlinear_lbfgs_v4.h2o')
+  
+  #classifier_algorithm = lambda: h2o.estimators.H2OGeneralizedLinearEstimator(solver='IRLSM', family='binomial')
+  #train_classifier('binclassifier_catfeatures_generalizedlinear_irlsm_v4.h2o')
+
+  #classifier_algorithm = lambda: h2o.estimators.H2ORandomForestEstimator(ntrees=10, binomial_double_trees=True, build_tree_one_node=True)
+  #train_classifier_second('binclassifier_catfeatures_randomforest_second.h2o')
+
+
+
+
+
+
 
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 59eaa02986d9f97b297e21a968c48472
+# md5: a684ed08d616e8a11042c1cbd239ca2c
 # coding: utf-8
 
 import urlparse
@@ -117,6 +117,9 @@ def ensure_sdir_subdir_exists(subdir):
 
 def sdir_path(filename):
   return get_sdir() + '/' + filename
+
+def sdir_glob(filename):
+  return glob(get_sdir() + '/' + filename)
 
 def sdir_exists(filename):
   return path.exists(sdir_path(filename))
