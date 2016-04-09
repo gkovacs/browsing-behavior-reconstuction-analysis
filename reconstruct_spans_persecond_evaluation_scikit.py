@@ -1,12 +1,12 @@
 #!/usr/bin/env python
-# md5: 1fb5b18e6d62df00a394d11f93dd8b19
+# md5: 917a616f23114232d7cd8c5480c365a4
 # coding: utf-8
 
 from tmilib import *
 import cPickle as pickle
 
 
-is_second = False
+is_second = True
 is_insession = True
 
 
@@ -85,7 +85,7 @@ def print_evaluation_stats(stats):
 #print_evaluation_stats(overall_stats)
 
 
-for pickle_file in glob('*xgboost*.pickle'):
+for pickle_file in sdir_glob('scikit*.pickle'):
   #pickle_file = 'classifier_threefeatures_randomforest_v2.pickle'
   print pickle_file
   classifier = pickle.load(open(pickle_file))
