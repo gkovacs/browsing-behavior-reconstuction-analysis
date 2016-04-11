@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: a684ed08d616e8a11042c1cbd239ca2c
+# md5: a97c3929c56d46ea4cd8b441807a35f8
 # coding: utf-8
 
 import urlparse
@@ -9,8 +9,9 @@ import os
 from os import path
 
 #import decompress_lzstring
+import numpy
 import pyximport
-pyximport.install()
+pyximport.install(setup_args={"include_dirs":numpy.get_include()})
 from decompress_lzstring_base64_cython import decompressFromBase64
 
 from memoized import memoized
@@ -22,7 +23,6 @@ except:
   import json
 
 from collections import Counter
-import numpy
 import time
 import datetime
 import random
@@ -45,7 +45,15 @@ tmi_overrides = {
 def get_basedir():
   if tmi_overrides['basedir'] != None:
     return tmi_overrides['basedir']
-  output = [x for x in glob('/home/gkovacs/tmi-data/local_*') if path.isfile(x + '/active')]
+  pathbase = '/home/gkovacs'
+  if not path.exists('/home/gkovacs'):
+    if path.exists('/home/geza'):
+      pathbase = '/home/geza'
+    elif path.exists('/Users/geza'):
+      pathbase = '/Users/geza'
+    elif path.exists('/afs/.ir/users/g/k/gkovacs'):
+      pathbase = '/afs/.ir/users/g/k/gkovacs/tmi-results'
+  output = [x for x in glob(pathbase + '/tmi-data/local_*') if path.isfile(x + '/active')]
   output.sort(reverse=True)
   return output[0]
   #return '/home/gkovacs/tmi-data/latest'

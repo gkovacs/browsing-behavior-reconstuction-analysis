@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: d4fb0249d559bd4333028fd5bbb1e14e
+# md5: dd33245d9893bd42b01276a1b0a5b1cf
 # coding: utf-8
 
 from tmilib import *
@@ -9,14 +9,50 @@ import h2o
 h2o.init()
 
 
-model_file = sdir_path('classifier_threefeatures_randomforest_insession.h2o')
+import traceback
+
+
+#print len(sdir_glob('*mtries_*_sample_rate_*'))
+
+
+#classifier = load_h2o_model(sdir_path('binclassifier_catfeatures_gradientboost_v3.h2o'))
+#print classifier
+
+
+
+for model_file in sdir_glob('*mtries_*_sample_rate_*'):
+  print model_file
+  try:
+    classifier = load_h2o_model(model_file)
+    print classifier
+  except:
+    traceback.print_exc()
+    continue
+
+
+model_file = sdir_path('binclassifier_catfeatures_randomforest_v6.h2o')
 classifier = load_h2o_model(model_file)
 
 
-test_data = h2o.import_file(sdir_path('h2odata_test_threefeatures_insession.csv'))
+print classifier
 
 
-test_predictions = classifier.predict(test_data)
+test_data = h2o.import_file(sdir_path('catdata_test_second_v2.csv'))
+
+
+#test_data_2[0] = test_data_2[0].asfactor()
+#print test_data_2.describe()
+
+
+#test_data = h2o.import_file(sdir_path('catdata_test_second.csv'))
+
+
+#print test_data.describe()
+#test_data[0] = test_data[0].asfactor()
+#test_data[0,:] = 1
+
+
+#test_predictions = classifier.predict(test_data)
 
 
 #print classifier
@@ -29,10 +65,10 @@ print classifier.model_performance(test_data)
 #print classifier.confusion_matrix
 #print test_data['label']
 #print test_predictions
-print classifier.F1
+#print classifier.F1
 
 
-print test_data.describe()
+#print test_data.describe()
 
 
 testdata= h2o.import_file(sdir_path('catdata_test_insession_tensecond.csv'))

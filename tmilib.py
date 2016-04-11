@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 4e5040e6cad4dc169c2faf84650b6d31
+# md5: 77618cc9529c3af79d1bbfcc1383179f
 # coding: utf-8
 
 from tmilib_base import *
@@ -380,6 +380,34 @@ def compute_tab_focus_times_for_all_users_randomized():
     compute_function_for_key(user, 'tab_focus_times_for_user')
 
 
+'''
+def compute_domain_switchfrom_within_session():
+  domain_to_num_stay = Counter()
+  domain_to_num_switch = Counter()
+  for user in get_training_users():
+    ordered_visits = get_history_ordered_visits_corrected_for_user(user)
+    prev_visit = None
+    for visit in ordered_visits:
+      if prev_visit == None:
+        prev_visit = visit
+        continue
+      visit_time = visit['visitTime'] # milliseconds
+      prev_visit_time = prev_visit['visitTime']
+      url = visit['url']
+      prev_url = prev_visit['url']
+      domain = url_to_domain(url)
+      domain_id = domain_to_id(domain)
+      prev_domain = url_to_domain(prev_url)
+      prev_domain_id = domain_to_id(prev_domain)
+      prev_visit = visit
+      new_session = False
+      if visit_time > prev_visit_time + 1000*60*20:
+        new_session = True
+      if new_session:
+        continue
+'''
+
+
 def compute_active_seconds_for_user(user):
   # this is in unix SECONDS timestamp, not in milliseconds!
   output = []
@@ -464,6 +492,70 @@ def compute_insession_seconds_for_all_users_randomized():
   for user in shuffled(list_users_with_log_and_mlog()):
     compute_function_for_key(user, 'insession_seconds_for_user')
 
+
+
+def compute_insession_history_seconds_for_user(user):
+  # this is in unix SECONDS timestamp, not in milliseconds!
+  output = set()
+  max_already_covered = 0
+  for visit in get_history_ordered_visits_corrected_for_user(user):
+    active_second = int(round(visit['visitTime'] / 1000.0))
+    for session_second in xrange(max(active_second, max_already_covered), active_second + 20*60): # 20 minutes after last activity
+      output.add(session_second)
+    max_already_covered = max(max_already_covered, active_second + 20*60)
+  output = list(output)
+  output.sort()
+  return output
+
+def get_insession_history_seconds_for_user(user):
+  # will probably want to convert this into a set after returning
+  # this is in unix SECONDS timestamp, not in milliseconds!
+  return get_function_for_key(user, 'insession_history_seconds_for_user')
+
+def compute_insession_history_seconds_for_all_users():
+  for user in list_users_with_log_and_mlog_and_hist():
+    compute_function_for_key(user, 'insession_history_seconds_for_user')
+
+def compute_insession_history_seconds_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key(user, 'insession_history_seconds_for_user')
+
+
+
+def compute_insession_both_seconds_for_user(user):
+  output = []
+  insession_history_seconds_set = set(get_insession_history_seconds_for_user(user))
+  for second in get_insession_seconds_for_user(user):
+    if second in insession_history_seconds_set:
+      output.append(second)
+  return output
+
+def get_insession_both_seconds_for_user(user):
+  # will probably want to convert this into a set after returning
+  # this is in unix SECONDS timestamp, not in milliseconds!
+  return get_function_for_key(user, 'insession_both_seconds_for_user')
+
+def compute_insession_both_seconds_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key(user, 'insession_both_seconds_for_user')
+
+
+def compute_active_insession_seconds_for_user(user):
+  output = []
+  insession_seconds = set(get_insession_both_seconds_for_user(user))
+  for second in get_active_seconds_for_user(user):
+    if second in insession_seconds:
+      output.append(second)
+  return output
+
+def get_active_insession_seconds_for_user(user):
+  # will probably want to convert this into a set after returning
+  # this is in unix SECONDS timestamp, not in milliseconds!
+  return get_function_for_key(user, 'active_insession_seconds_for_user')
+
+def compute_active_insession_seconds_for_all_users_randomized():
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key(user, 'active_insession_seconds_for_user')
 
 
 def compute_tab_focus_times_only_tab_updated_for_user(user):
@@ -1481,7 +1573,7 @@ def get_users_with_data():
 @memoized
 def get_training_and_test_users():
   all_available_users = get_users_with_data()
-  half_of_all = len(all_available_users) / 2
+  half_of_all = (len(all_available_users)+1) / 2
   training_users = random.sample(all_available_users, half_of_all)
   training_users_set = set(training_users)
   test_users = [x for x in all_available_users if x not in training_users_set]
