@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 5d00886025d3b72e88fbef4663d71b0f
+# md5: 3a66c30b11b48d1e6b995ea43bc3ba18
 # coding: utf-8
 
 import csv
@@ -29,7 +29,7 @@ import cPickle as pickle
 
 import h2o
 import h2o.grid
-h2o.init(port=int(os.environ.get('h2o_port', 0))) #, start_h2o=True)
+h2o.init(port=int(os.environ.get('h2o_port', 54321))) #, start_h2o=True)
 #h2o.init()
 
 

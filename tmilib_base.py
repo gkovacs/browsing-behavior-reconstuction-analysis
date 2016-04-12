@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: a97c3929c56d46ea4cd8b441807a35f8
+# md5: 31c9de0fe31ed470435a5e727c0ff5aa
 # coding: utf-8
 
 import urlparse
@@ -52,7 +52,7 @@ def get_basedir():
     elif path.exists('/Users/geza'):
       pathbase = '/Users/geza'
     elif path.exists('/afs/.ir/users/g/k/gkovacs'):
-      pathbase = '/afs/.ir/users/g/k/gkovacs/tmi-results'
+      pathbase = '/afs/.ir/users/g/k/gkovacs'
   output = [x for x in glob(pathbase + '/tmi-data/local_*') if path.isfile(x + '/active')]
   output.sort(reverse=True)
   return output[0]

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 77618cc9529c3af79d1bbfcc1383179f
+# md5: c5378bc7ec41dd0034cf99faa3e96fb1
 # coding: utf-8
 
 from tmilib_base import *
@@ -581,6 +581,105 @@ def compute_tab_focus_times_only_tab_updated_for_all_users():
 def compute_tab_focus_times_only_tab_updated_for_all_users_randomized():
   for user in shuffled(list_users_with_log_and_mlog()):
     compute_function_for_key(user, 'tab_focus_times_only_tab_updated_for_user')
+
+
+def compute_next_domain_at_seconds_for_user(user):
+  output = {}
+  ordered_visits = get_history_ordered_visits_corrected_for_user(user)
+  ordered_visits = exclude_bad_visits(ordered_visits)
+  active_seconds_set = set(get_active_insession_seconds_for_user(user))
+  for idx,visit in enumerate(ordered_visits):
+    if idx+1 >= len(ordered_visits):
+      break
+    next_visit = ordered_visits[idx+1]
+    cur_time_sec = int(round(visit['visitTime'] / 1000.0))
+    next_time_sec = int(round(next_visit['visitTime'] / 1000.0))
+    if cur_time_sec > next_time_sec:
+      continue
+    for time_sec in xrange(cur_time_sec, next_time_sec+1):
+      if time_sec not in active_seconds_set:
+        continue
+      output[time_sec] = url_to_domain(next_visit['url'])
+  return output
+
+def get_next_domain_at_seconds_for_user(user):
+  return get_function_for_key(user, 'next_domain_at_seconds_for_user')
+
+def compute_next_domain_at_seconds_for_all_users():
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key(user, 'next_domain_at_seconds_for_user')
+
+
+def compute_prev7_domains_at_seconds_for_user(user):
+  # returns a length 8 array for each second. first element of that array is current, second and onwards are the previous ones. not immediate previous, but unique previous
+  output = {}
+  ordered_visits = get_history_ordered_visits_corrected_for_user(user)
+  ordered_visits = exclude_bad_visits(ordered_visits)
+  active_seconds_set = set(get_active_insession_seconds_for_user(user))
+  prev_domain_ids = [-1]*8
+  for idx,visit in enumerate(ordered_visits):
+    if idx+1 >= len(ordered_visits):
+      break
+    next_visit = ordered_visits[idx+1]
+    cur_time_sec = int(round(visit['visitTime'] / 1000.0))
+    next_time_sec = int(round(next_visit['visitTime'] / 1000.0))
+    if cur_time_sec > next_time_sec:
+      continue
+    cur_domain_id = domain_to_id(url_to_domain(visit['url']))
+    if prev_domain_ids[0] != cur_domain_id:
+      #prev_domain_ids = ([cur_domain_id] + [x for x in prev_domain_ids if x != cur_domain_id])[:4]
+      if cur_domain_id in prev_domain_ids:
+        prev_domain_ids.remove(cur_domain_id)
+      prev_domain_ids.insert(0, cur_domain_id)
+      while len(prev_domain_ids) > 8:
+        prev_domain_ids.pop()
+    prev_domains = [id_to_domain(x) for x in prev_domain_ids]
+    for time_sec in xrange(cur_time_sec, next_time_sec+1):
+      if time_sec not in active_seconds_set:
+        continue
+      output[time_sec] = prev_domains
+  return output
+
+def get_prev7_domains_at_seconds_for_user(user):
+  return get_function_for_key(user, 'prev7_domains_at_seconds_for_user')
+
+def compute_prev7_domains_at_seconds_for_all_users():
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key(user, 'prev7_domains_at_seconds_for_user')
+
+
+def compute_immediate_prev7_domains_at_seconds_for_user(user):
+  # returns a length 8 array for each second. first element of that array is current, second and onwards are the previous ones. not immediate previous, but unique previous
+  output = {}
+  ordered_visits = get_history_ordered_visits_corrected_for_user(user)
+  ordered_visits = exclude_bad_visits(ordered_visits)
+  active_seconds_set = set(get_active_insession_seconds_for_user(user))
+  prev_domain_ids = [-1]*8
+  for idx,visit in enumerate(ordered_visits):
+    if idx+1 >= len(ordered_visits):
+      break
+    next_visit = ordered_visits[idx+1]
+    cur_time_sec = int(round(visit['visitTime'] / 1000.0))
+    next_time_sec = int(round(next_visit['visitTime'] / 1000.0))
+    if cur_time_sec > next_time_sec:
+      continue
+    cur_domain_id = domain_to_id(url_to_domain(visit['url']))
+    prev_domain_ids.insert(0, cur_domain_id)
+    while len(prev_domain_ids) > 8:
+      prev_domain_ids.pop()
+    prev_domains = [id_to_domain(x) for x in prev_domain_ids]
+    for time_sec in xrange(cur_time_sec, next_time_sec+1):
+      if time_sec not in active_seconds_set:
+        continue
+      output[time_sec] = prev_domains
+  return output
+
+def get_immediate_prev7_domains_at_seconds_for_user(user):
+  return get_function_for_key(user, 'immediate_prev7_domains_at_seconds_for_user')
+
+def compute_immediate_prev7_domains_at_seconds_for_all_users():
+  for user in shuffled(list_users_with_log_and_mlog_and_hist()):
+    compute_function_for_key(user, 'immediate_prev7_domains_at_seconds_for_user')
 
 
 def compute_tab_focus_times_only_tab_updated_urlchanged_for_user(user):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: c2188c1f44577f667dd7ea2e42cecc24
+# md5: c8864930a096ab388f167e1cd2c0a0ef
 # coding: utf-8
 
 import csv
@@ -19,7 +19,7 @@ from tmilib import *
 
 import h2o
 import h2o.grid
-h2o.init(port=int(os.environ.get('h2o_port', 0)))
+h2o.init(port=int(os.environ.get('h2o_port', 54321)))
 
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: a11986da0c64f98c5b551c1640cfb320
+# md5: bd300914dd85774d27f7ff523c56b0ab
 # coding: utf-8
 
 
@@ -28,68 +28,83 @@ from tmilib import *
 #print active_second_to_domain_id.keys()[:10]
 
 
-@memoized
-def get_seen_urls_and_domains_real_and_history():
-  seen_urls_history = Counter()
-  seen_domains_history = Counter()
-  for user in get_test_users():
-    active_seconds_set = set(get_active_insession_seconds_for_user(user))
-    ordered_visits = get_history_ordered_visits_corrected_for_user(user)
-    ordered_visits = exclude_bad_visits(ordered_visits)
-    for visit in ordered_visits:
-      url = visit['url']
-      visit_time = visit['visitTime']
-      if visit_time not in active_seconds_set:
-        continue
-      #if 'chrome://' in url:
-      #  chrome_urls[url] += 1
-      seen_urls_history[url] += 1
-      seen_domains_history[url_to_domain(url)] += 1
 
-  seen_urls_real = Counter()
-  seen_domains_real = Counter()
-  for user in get_test_users():
-    active_seconds_set = set(get_active_insession_seconds_for_user(user))
-    for time,url in get_active_url_at_time_for_user(user).viewitems():
-      if time not in active_seconds_set:
-        continue
-      seen_urls_real[url] += 1
-      seen_domains_real[url_to_domain(url)] += 1
-      #if url.startswith('chrome://'):
-      #  chrome_urls[url] += 1
-  
-  seen_domains_only_real = {k:v for k,v in seen_domains_real.viewitems() if k not in seen_domains_history}
-  #print_counter(seen_domains_only_real)
-
-  seen_domains_only_history = {k:v for k,v in seen_domains_history.viewitems() if k not in seen_domains_real}
-  #print_counter(seen_domains_only_history)
-  return {
-    'seen_urls_history': seen_urls_history,
-    'seen_domains_history': seen_domains_history,
-    'seen_urls_real': seen_urls_real,
-    'seen_domains_real': seen_domains_real,
-    'seen_domains_only_real': seen_domains_only_real,
-    'seen_domains_only_history': seen_domains_only_history,
-  }
 
 
 #seen_domains_only_real = get_seen_urls_and_domains_real_and_history()['seen_domains_only_real']
 
 
-print_counter(get_seen_urls_and_domains_real_and_history()['seen_domains_only_real'])
-
-
-print_counter(get_seen_urls_and_domains_real_and_history()['seen_domains_only_history'])
 
 
 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#[domain_to_id(x) for x in ['www.mturk.com', 'apps.facebook.com', 'www.facebook.com', 'www.reddit.com', 'www.youtube.com']]
+
+
+#sumkeys(total_tabbed_back_domains_all, 'www.mturk.com', 'apps.facebook.com', 'www.facebook.com', 'www.reddit.com', 'www.youtube.com')
+
+
+
+
+
+#728458.0/2382221
+
+
+
+
+
+
+
+
+#print_counter(total_tabbed_back_domains_first)
+
+
+
+
+
+
+
+
+'''
+total_active_seconds = 0
+
+for user in get_test_users():
+  total_active_seconds += len(get_active_seconds_for_user(user))
+  #for span in get_active_seconds_for_user(user)
+print total_active_seconds
+'''
+
+
+#for user in get_test_users():
+#  print user
+#  print (get_recently_seen_domain_stats_for_user(user)['stats'])
 
 
 @memoized
-def get_recently_seen_domain_stats_for_user(user):
+def get_recently_seen_domain_stats_for_user_v3(user):
   ordered_visits = get_history_ordered_visits_corrected_for_user(user)
   ordered_visits = exclude_bad_visits(ordered_visits)
   active_domain_at_time = get_active_domain_at_time_for_user(user)
@@ -114,11 +129,17 @@ def get_recently_seen_domain_stats_for_user(user):
     cur_domain_id = domain_to_id(cur_domain)
     if cur_domain_id in distractors:
       most_recent_distractor = cur_domain_id
-    if cur_domain_id != recently_seen_domain_ids[-1]:
-      if cur_domain_id in seen_domain_ids_set:
-        recently_seen_domain_ids.remove(cur_domain_id)
-      seen_domain_ids_set.add(cur_domain_id)
-      recently_seen_domain_ids.append(cur_domain_id)
+    recently_seen_domain_ids.append(cur_domain_id)
+    #if cur_domain_id != recently_seen_domain_ids[-1]:
+    #  if cur_domain_id in seen_domain_ids_set:
+    #    recently_seen_domain_ids.remove(cur_domain_id)
+    #  seen_domain_ids_set.add(cur_domain_id)
+    #  recently_seen_domain_ids.append(cur_domain_id)
+    #if cur_domain_id != recently_seen_domain_ids[-1]:
+    #  if cur_domain_id in seen_domain_ids_set:
+    #    recently_seen_domain_ids.remove(cur_domain_id)
+    #  seen_domain_ids_set.add(cur_domain_id)
+    #  recently_seen_domain_ids.append(cur_domain_id)
     next_domain = url_to_domain(next_visit['url'])
     next_domain_id = domain_to_id(next_domain)
     cur_time_sec = int(round(visit['visitTime'] / 1000.0))
@@ -146,9 +167,9 @@ def get_recently_seen_domain_stats_for_user(user):
         else:
           stats['first correct only'] += 1
         continue
-      if next_domain_id == ref_domain_id:
-        stats['next correct only'] += 1
-        continue
+      #if next_domain_id == ref_domain_id:
+      #  stats['next correct only'] += 1
+      #  continue
       stats['both incorrect'] += 1
       found_match = False
       ref_domain = id_to_domain(ref_domain_id)
@@ -165,9 +186,9 @@ def get_recently_seen_domain_stats_for_user(user):
           break
       if not found_match:
         ref_domain = id_to_domain(ref_domain_id)
-        if ref_domain == 'newtab':
-          stats['newtab'] += 1
-          continue
+        #if ref_domain == 'newtab':
+        #  stats['newtab'] += 1
+        #  continue
         stats['no match found'] += 1
         nomatch_domains[id_to_domain(ref_domain_id)] += 1
       '''
@@ -209,80 +230,20 @@ def get_recently_seen_domain_stats_for_user(user):
   }
 
 
-total_nomatch_domains = Counter()
-
-for user in get_test_users():
-  for k,v in get_recently_seen_domain_stats_for_user(user)['nomatch_domains'].viewitems():
-    total_nomatch_domains[k] += v
-
-
-#print total_nomatch_domains
-print_counter(total_nomatch_domains)
-
-
-total_tabbed_back_domains_all = Counter()
-
-for user in get_test_users():
-  for k,v in get_recently_seen_domain_stats_for_user(user)['tabbed_back_domains_all'].viewitems():
-    total_tabbed_back_domains_all[k] += v
-
-
-#[domain_to_id(x) for x in ['www.mturk.com', 'apps.facebook.com', 'www.facebook.com', 'www.reddit.com', 'www.youtube.com']]
-
-
-#sumkeys(total_tabbed_back_domains_all, 'www.mturk.com', 'apps.facebook.com', 'www.facebook.com', 'www.reddit.com', 'www.youtube.com')
-
-
-print sum(total_tabbed_back_domains_all.values())
-
-
-#728458.0/2382221
-
-
-print_counter(total_tabbed_back_domains_all)
-
-
-
-
-
-#print_counter(total_tabbed_back_domains_first)
-
-
-
-
-
-
-
-
-'''
-total_active_seconds = 0
-
-for user in get_test_users():
-  total_active_seconds += len(get_active_seconds_for_user(user))
-  #for span in get_active_seconds_for_user(user)
-print total_active_seconds
-'''
-
-
-#for user in get_test_users():
-#  print user
-#  print (get_recently_seen_domain_stats_for_user(user)['stats'])
-
-
-
-
-
 #total_stats = Counter({'total': 544544, 'first and next equal and correct': 351081, 'first correct only': 88522, 'both incorrect': 51663, 'some previous among past 20 correct': 41231, 'nth previous correct 1': 31202, 'next correct only': 23569, 'no match found': 10432, 'nth previous correct 2': 3311, 'nth previous correct 3': 1635, 'nth previous correct 4': 905, 'nth previous correct 5': 862, 'nth previous correct 6': 545, 'nth previous correct 7': 412, 'nth previous correct 8': 357, 'nth previous correct 9': 269, 'nth previous correct 10': 259, 'nth previous correct 13': 234, 'nth previous correct 11': 229, 'nth previous correct 12': 190, 'nth previous correct 15': 183, 'nth previous correct 14': 140, 'nth previous correct 17': 139, 'nth previous correct 20': 95, 'nth previous correct 16': 90, 'nth previous correct 19': 88, 'nth previous correct 18': 86})
 
 total_stats = Counter()
 
 for user in get_test_users():
-  for k,v in get_recently_seen_domain_stats_for_user(user)['stats'].viewitems():
+  for k,v in get_recently_seen_domain_stats_for_user_v3(user)['stats'].viewitems():
     total_stats[k] += v
 #total_stats = Counter({'total': 544544, 'first and next equal and correct': 351081, 'first correct only': 88522, 'both incorrect': 51663, 'some previous among past 20 correct': 41136, 'nth previous correct 2': 31202, 'next correct only': 23569, 'no match found': 10527, 'nth previous correct 3': 3311, 'nth previous correct 4': 1635, 'nth previous correct 5': 905, 'nth previous correct 6': 862, 'nth previous correct 7': 545, 'nth previous correct 8': 412, 'nth previous correct 9': 357, 'nth previous correct 10': 269, 'nth previous correct 11': 259, 'nth previous correct 14': 234, 'nth previous correct 12': 229, 'nth previous correct 13': 190, 'nth previous correct 16': 183, 'nth previous correct 15': 140, 'nth previous correct 18': 139, 'nth previous correct 17': 90, 'nth previous correct 20': 88, 'nth previous correct 19': 86})
 
 
 print_counter(total_stats)
+
+
+
 
 
 def sumkeys(d, *args):
