@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 3a66c30b11b48d1e6b995ea43bc3ba18
+# md5: f84b9eee6db0594c8c22a94eec97ea01
 # coding: utf-8
 
 import csv
@@ -534,9 +534,9 @@ is_grid = 'grid' in sys.argv[1:]
 
 def get_train_dataset_path():
   if is_second:
-    return sdir_path('catdata_train_second.csv')
+    return sdir_path('catdata_train_second_v3.csv')
   else:
-    return sdir_path('catdata_train_tensecond.csv')
+    return sdir_path('catdata_train_tensecond_v3.csv')
 
 def train_classifier(model_name):
   model_file = sdir_path(model_name)
@@ -575,7 +575,7 @@ def get_classifier_name():
 def train_single_classifier():
   global classifier_algorithm
   classifier_algorithm = lambda: h2o.estimators.H2ORandomForestEstimator(build_tree_one_node=True)
-  train_classifier(get_classifier_name() + '_v6.h2o')
+  train_classifier(get_classifier_name() + '_v7.h2o')
 
 def train_grid_classifier():
   global train_dataset
@@ -584,7 +584,7 @@ def train_grid_classifier():
   test_data = h2o.import_file(train_dataset.replace('train', 'test'))
   for mtries,sample_rate in shuffled(list(itertools.product([1, 2, 3, 5, 6, 7], [0.50, 0.60, 0.70, 0.80, 0.90, 0.95, 1.0]))):
     features_string = '_'.join(map(str, ['mtries', mtries, 'sample_rate', sample_rate]))
-    model_path = sdir_path(get_classifier_name() + '_v6_' + features_string + '.h2o')
+    model_path = sdir_path(get_classifier_name() + '_v7_' + features_string + '.h2o')
     if path.exists(model_path):
       continue
     print features_string

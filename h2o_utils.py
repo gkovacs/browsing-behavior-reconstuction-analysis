@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: d2c9f914febab4be64592eb69f9b793e
+# md5: fefbb8e0d24e89174a6f30736c5be98f
 # coding: utf-8
 
 import h2o
@@ -34,11 +34,12 @@ def make_predictions_and_save(classifier, test_data, output_file, columns_offset
 
 
 def clear_h2o_memory():
-  for x in h2o.ls():
-    try:
-      if x[0] == 'key':
-        continue
-      h2o.remove(x[0])
-    except:
-      continue
+  h2o.remove_all()
+  #for x in h2o.ls():
+  #  try:
+  #    if x[0] == 'key':
+  #      continue
+  #    h2o.remove(x[0])
+  #  except:
+  #    continue
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# md5: 2dc33dd126c67c48908a65d74fa45c7f
+# md5: 42ba1a93fe3c71d01bb611ccc54772ef
 # coding: utf-8
 
 import csv
@@ -42,16 +42,16 @@ def user_data_to_csv(outpath, users, get_data_func):
     return
   print outpath
   outfile = csv.writer(open(full_outpath, 'w'))
-  outfile.writerow(['label', 'sinceprev', 'tonext', 'spanlen', 'samedomain', 'fromdomain', 'todomain', 'fromprod', 'toprod'])
+  outfile.writerow(['user', 'time_sec', 'label', 'sinceprev', 'tonext', 'spanlen', 'samedomain', 'fromdomain', 'todomain', 'fromprod', 'toprod'])
   for user in users:
-    for is_active, sinceprev, tonext, spanlen, from_domain_id, to_domain_id in get_data_func(user):
+    for time_sec, is_active, sinceprev, tonext, spanlen, from_domain_id, to_domain_id in get_data_func(user):
       label = 'T' if is_active else 'F'
       samedomain = 'T' if (from_domain_id == to_domain_id) else 'F'
       fromdomain = domain_id_to_letter.get(from_domain_id, 'u')
       todomain = domain_id_to_letter.get(to_domain_id, 'u')
       fromdomain_prod = domain_id_to_productivity_letter[from_domain_id]
       todomain_prod = domain_id_to_productivity_letter[to_domain_id]
-      outfile.writerow([label, sinceprev, tonext, spanlen, samedomain, fromdomain, todomain, fromdomain_prod, todomain_prod])
+      outfile.writerow([user, time_sec, label, sinceprev, tonext, spanlen, samedomain, fromdomain, todomain, fromdomain_prod, todomain_prod])
 
 
 
@@ -94,7 +94,7 @@ def get_activespan_data(user, tensecond_only, insession_only):
       #if tonext == 0:
       #  is_active = True
       #  tonext = 0.0001
-      output.append([is_active, log(sinceprev), log(tonext), log(spanlen), from_domain_id, to_domain_id])
+      output.append([time_sec, is_active, log(sinceprev), log(tonext), log(spanlen), from_domain_id, to_domain_id])
   return output
 
 def get_activespan_data_tensecond(user):
@@ -116,14 +116,14 @@ test_users = get_test_users()
 
 
 
-user_data_to_csv('catdata_train_tensecond_v4.csv', training_users, get_activespan_data_tensecond)
-user_data_to_csv('catdata_test_tensecond_v4.csv', test_users, get_activespan_data_tensecond)
-user_data_to_csv('catdata_train_insession_tensecond_v4.csv', training_users, get_activespan_data_tensecond_insession)
-user_data_to_csv('catdata_test_insession_tensecond_v4.csv', test_users, get_activespan_data_tensecond_insession)
-user_data_to_csv('catdata_train_second_v4.csv', training_users, get_activespan_data_second)
-user_data_to_csv('catdata_test_second_v4.csv', test_users, get_activespan_data_second)
-user_data_to_csv('catdata_train_insession_second_v4.csv', training_users, get_activespan_data_second_insession)
-user_data_to_csv('catdata_test_insession_second_v4.csv', test_users, get_activespan_data_second_insession)
+user_data_to_csv('catdata_train_tensecond_evaluation_v4.csv', training_users, get_activespan_data_tensecond)
+user_data_to_csv('catdata_test_tensecond_evaluation_v4.csv', test_users, get_activespan_data_tensecond)
+user_data_to_csv('catdata_train_insession_tensecond_evaluation_v4.csv', training_users, get_activespan_data_tensecond_insession)
+user_data_to_csv('catdata_test_insession_tensecond_evaluation_v4.csv', test_users, get_activespan_data_tensecond_insession)
+user_data_to_csv('catdata_train_second_evaluation_v4.csv', training_users, get_activespan_data_second)
+user_data_to_csv('catdata_test_second_evaluation_v4.csv', test_users, get_activespan_data_second)
+user_data_to_csv('catdata_train_insession_second_evaluation_v4.csv', training_users, get_activespan_data_second_insession)
+user_data_to_csv('catdata_test_insession_second_evaluation_v4.csv', test_users, get_activespan_data_second_insession)
 
 '''
 user_data_to_csv('catdata_train_tensecond.csv', training_users, get_tensecondlevel_activespan_dataset_for_user)
